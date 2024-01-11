@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Blog', href: '/blog', current: route.name.includes('blog') },
   { name: 'Portfolio', href: '/portfolio', current: route.name == 'portfolio' },
   { name: 'Contact', href: '/contact', current: route.name == 'contact' },
+  { name: 'Resume', href: '/resume', current: route.name == 'resume' },
 ]
 </script>
 

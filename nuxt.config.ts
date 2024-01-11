@@ -4,8 +4,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     'nuxt-icon',
     '@nuxt/content',
-    '@nuxtjs/cloudinary',
-    '@nuxtjs/apollo'
+    '@nuxtjs/cloudinary'
   ],
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
@@ -18,14 +17,6 @@ export default defineNuxtConfig({
     highlight: {
       theme: 'nord',
       preload: ['ts','js','css','java','json','bash','vue', 'python']
-    }
-  },
-  apollo: {
-    clients: {
-      default: {
-        tokenName: 'github-token',
-        httpEndpoint: 'https://api.github.com/graphql'
-      }
     }
   },
 })
