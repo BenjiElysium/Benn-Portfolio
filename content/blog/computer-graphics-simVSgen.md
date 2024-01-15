@@ -5,8 +5,7 @@ date: 2024-01-10
 cover: 'https://res.cloudinary.com/doj03xgr2/image/upload/v1698093198/Elements/Eld-spirits.34_bepiqu.jpg'
 
 tags:
-  - blog
-  - stable-diffusion
+  - Stable Diffusion
   - computer graphics
 ---
 
@@ -39,5 +38,9 @@ On the comparison of latent image diffusion and traditional computer graphics
 ## Bring it Together
 
 **Hybrid Rendering Techniques**: Combining the simulative processes of traditional CGI, like ray tracing which simulates light paths, with the generative capabilities of latent diffusion toward a a hybrid rendering technique. **This technique could potentially generate images** that not only adhere to physical principles but also incorporate learned patterns and features from the image training sets.
+
+## AI Render Plugin for Blender
+
+"AI-Render" is a project hosted on GitHub that integrates Stable Diffusion technology into Blender, a popular 3D creation suite. This combination allows users to leverage the capabilities of Stable Diffusion, an advanced AI model for image synthesis, within the Blender environment. The project is focused on enhancing the creative and production processes in 3D modeling and animation by utilizing AI-driven image generation techniques. The project is developed primarily in Python and is licensed under the MIT license. For a detailed overview and access to the project's resources, you can visit the GitHub page of AI-Render.
 
 ![Ai-generated Ribbons and Leaves](https://res.cloudinary.com/doj03xgr2/image/upload/v1698093198/Elements/Eld-spirits.34_bepiqu.jpg)

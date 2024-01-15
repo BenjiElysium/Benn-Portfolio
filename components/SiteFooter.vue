@@ -18,9 +18,9 @@ const links = [
 
 <template>
   <footer class="footer bg-zinc-900/90">
-    <section class="mx-auto max-w-6xl px-8 mt-2 text-gray-300 flex flex-row">
-      <p class="flex-1 mt-0">&copy; Philip Benn 2023. All Rights Reserved</p>
-      <div class="flex flex-row justify-center gap-4">
+    <section class="max-w-2xl px-4 mt-2 m-4 justify-between text-gray-300 flex flex-row">
+      <p class="mt-0">&copy; Philip Benn 2023. All Rights Reserved</p>
+      <div class="flex flex-row gap-4">
         <a v-for="link in links" :key="link.name" :href="link.href">
           <Icon :name="link.icon" size="1.5rem" class="text-gray-300" />
         </a>

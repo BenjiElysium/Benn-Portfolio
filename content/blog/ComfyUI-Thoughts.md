@@ -4,8 +4,10 @@ description: An Overview of Node Graph Oriented User Interface Applications.
 date: 2024-01-10
 cover: https://res.cloudinary.com/doj03xgr2/image/upload/v1695245550/ReplicatePortal/GentlemanBarney_2_s9vbpw.png
 tags:
-  - blog
-  - stable-diffusion
+  - Stable Diffusion
+  - ComfyUI
+  - Control Net
+  - IP Adapter
 ---
 
 # ComfyUI - The Nuke of Stable Diffusion
