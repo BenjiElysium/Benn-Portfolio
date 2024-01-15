@@ -10,7 +10,7 @@ const { data } = await useAsyncData(`content-${path}`, () => {
 
 <template>
   <div class="pt-12 bg-white">
-    <ContentRenderer :value="data" class="prose my-10 mx-auto max-w-7xl" />
+    <ContentRenderer :value="data" class="prose my-10 mx-auto max-w-7xl px-8 py-4" />
     <div class="my-8">
       <a v-for="tag in  data.tags " :key="tag" :href="`/blog/tags/${tag}`"
         class="text-sm font-semibold inline-block py-2 px-4 rounded-lg text-gray-100 bg-blue-500 uppercase last:mr-0 mr-4">

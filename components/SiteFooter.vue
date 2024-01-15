@@ -1,8 +1,7 @@
 <script setup>
 const links = [
-  { name: 'GitHub', href: 'https://github.com', icon: 'entypo-social:github-with-circle' },
-  { name: 'Facebook', href: 'https://facebook.com', icon: 'entypo-social:facebook' },
-  { name: 'LinkedIn', href: 'https://www.linkedin.com', icon: 'entypo-social:linkedin-with-circle' },
+  { name: 'LinkedIn', href: 'https://www.linkedin.com/in/philip-benn-5977142/', icon: 'entypo-social:linkedin-with-circle' },
+  { name: 'GitHub', href: 'https://github.com/BenjiElysium', icon: 'entypo-social:github-with-circle' },
 ]
 </script>
 

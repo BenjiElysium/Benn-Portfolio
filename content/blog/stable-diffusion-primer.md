@@ -2,7 +2,7 @@
 title: Stable Diffusion - A Primer
 description: This blog is a primer on Stable Diffusion and how it works.
 date: 2024-01-10
-cover: nasa-Q1p7bh3SHj8-unsplash.jpg
+cover: https://res.cloudinary.com/doj03xgr2/image/upload/v1695245569/ReplicatePortal/multi-color-hair-Woman2_ixh5f4.png
 tags:
   - blog
   - stable-diffusion
@@ -16,7 +16,7 @@ It's a confluence of art and science, where creativity intersects with data scie
 
 It's like having a new power to create a digital artwork with words.
 
-![Earth from Space](/images/blog/nasa-Q1p7bh3SHj8-unsplash.jpg)
+![Portrait of a woman](https://res.cloudinary.com/doj03xgr2/image/upload/v1695245569/ReplicatePortal/multi-color-hair-Woman2_ixh5f4.png)
 
 ## This is a heading 2
 
