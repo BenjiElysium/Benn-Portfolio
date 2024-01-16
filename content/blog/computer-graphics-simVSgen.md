@@ -41,6 +41,8 @@ On the comparison of latent image diffusion and traditional computer graphics
 
 ## AI Render Plugin for Blender
 
-"AI-Render" is a project hosted on GitHub that integrates Stable Diffusion technology into Blender, a popular 3D creation suite. This combination allows users to leverage the capabilities of Stable Diffusion, an advanced AI model for image synthesis, within the Blender environment. The project is focused on enhancing the creative and production processes in 3D modeling and animation by utilizing AI-driven image generation techniques. The project is developed primarily in Python and is licensed under the MIT license. For a detailed overview and access to the project's resources, you can visit the GitHub page of AI-Render.
+AI-Render is an innovative project available on GitHub that seamlessly integrates Stable Diffusion technology with Blender, the renowned 3D creation suite. This integration empowers users to harness the capabilities of Stable Diffusion, a cutting-edge AI model specialized in image synthesis, directly within Blender's versatile environment. The project is primarily geared towards revolutionizing the creative workflow in 3D modeling and animation by incorporating AI-driven image generation.
+
+Developed chiefly in Python, AI-Render is under the MIT license, ensuring wide accessibility and adaptability. For those interested in exploring this fusion of AI and 3D art, a comprehensive overview and all necessary resources can be found on the AI-Render GitHub page: [AI-Render on GitHub](https://github.com/benrugg/AI-Render)
 
 ![Ai-generated Ribbons and Leaves](https://res.cloudinary.com/doj03xgr2/image/upload/v1698093198/Elements/Eld-spirits.34_bepiqu.jpg)

@@ -3,8 +3,7 @@
     <div class="pt-20 pb-24">
       <h1 class="text-3xl font-bold my-8">Contact</h1>
       <p class="text-lg mb-8">
-        I am available to work on projects remotely or on location in the Bay Area. <br>
-        Please get in touch to inquire about availability using email or by phone.<br>
+        I am available for projects either remotely or on-site in the Bay Area. Feel free to reach out to discuss availability or any inquiries you might have. You can contact me via email or phone.<br>
       </p>
       <p class="text-lg">
         📱: 310-403-1826

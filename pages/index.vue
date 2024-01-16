@@ -16,12 +16,12 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
     <div class="md:w-3/4">
       <h2 class="text-3xl font-bold mt-8">My Background</h2>
       <p class="text-lg py-2">
-        I have experience in the areas of 3D production, creative coding, generative AI, and product rendering. I have worked professionally in New York City, Los Angeles and the Bay Area where I currently live. I have an MFA in Design Technology, and I am passionate about all things related to computer graphics, art and design.
+        I have experience in 3D production, creative coding, generative AI, and product rendering. My professional journey has taken me through New York City, Los Angeles, and the Bay Area, where I currently reside. Holding an MFA in Design Technology, I am deeply passionate about computer graphics, art, and design.
       </p>
       <p class="text-lg py-2">
-        I am application agnostic, I can learn any application required by the project and team. Cinema4D, Maya, Nuke, Adobe Creative Cloud, Unity, Rhino and Blender are some of the 3D production applications I have used including many others.<br><br>
-        I write code with Python and Javascript using the VS Code IDE. I'm getting comfortable with the JAMstack web dev architecture. Along these lines, I've been integrating APIs into web apps to take advantage of cloud services for OpenAI LLM APIs, databases and vector stores, machine learning models, and authorization.<br><br>
-        I am deeply immersed and even slightly obsessed with open-source Stable Diffusion machine learning models and I use ComyUI and Automatic1111 for Txt2Img, Txt2Vid, Img2Img and AnimDiff. See some of my blogs entries for details!
+        Application-agnostic, I can adeptly learn any software needed for a project or team. My toolkit includes Cinema4D, Maya, Nuke, Adobe Creative Cloud, Unity, Rhino, Blender, among many other 3D production applications.<br><br>
+        In coding, I am proficient in Python and Javascript, using the VS Code IDE. I'm increasingly comfortable with the JAMstack web development architecture and have been integrating APIs into web apps. This includes leveraging cloud services for OpenAI LLM APIs, databases, vector stores, machine learning models, and authorization.<br><br>
+        My current focus is on open-source Stable Diffusion machine learning models. Utilizing tools like ComyUI and Automatic1111, I explore Txt2Img, Txt2Vid, Img2Img, and AnimDiff functionalities. Check out my blog entries for more details on these projects!
       </p>
     </div>
     <div class="w-3/4 md:max-w-sm p-8 mx-auto mt-12 aspect-w-16 aspect-h-9">
