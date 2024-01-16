@@ -24,7 +24,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
         I am deeply immersed and even slightly obsessed with open-source Stable Diffusion machine learning models and I use ComyUI and Automatic1111 for Txt2Img, Txt2Vid, Img2Img and AnimDiff. See some of my blogs entries for details!
       </p>
     </div>
-    <div class="w-1/2 md:max-w-sm p-8 mx-auto mt-12 aspect-w-16 aspect-h-9">
+    <div class="w-3/4 md:max-w-sm p-8 mx-auto mt-12 aspect-w-16 aspect-h-9">
       <img src="~/assets/images/Philip-Gradient1.jpg" class="object-cover rounded-lg" />
     </div>
   </section>
