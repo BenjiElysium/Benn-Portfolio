@@ -29,9 +29,10 @@ onUnmounted(() => {
 const navigation = [
   { name: 'Home', href: '/', current: route.name == 'index' },
   { name: 'Blog', href: '/blog', current: route.name.includes('blog') },
-  { name: 'Portfolio', href: '/portfolio', current: route.name == 'portfolio' },
-  { name: 'Contact', href: '/contact', current: route.name == 'contact' },
+  { name: 'Portfolio: CGI', href: '/portfolio-CGI', current: route.name == 'portfolio-CGI' },
+  { name: 'Portfolio: GenAI', href: '/portfolio-GenAI', current: route.name == 'portfolio-GenAI' },
   { name: 'Resume', href: '/resume', current: route.name == 'resume' },
+  { name: 'Contact', href: '/contact', current: route.name == 'contact' },
 ]
 </script>
 
@@ -57,7 +58,7 @@ const navigation = [
 
 <template>
   <Disclosure as="nav" :class="{ 'hidden-navbar': !isNavbarVisible, 'visible-navbar': isNavbarVisible }" class="navbar bg-zinc-900" v-slot="{ open }">
-    <div class="mx-2 max-w-7xl px-2 sm:px-6 lg:px-8">
+    <div class="mx-4 max-w-7xl px-2 sm:px-6 lg:px-8">
       <div class="relative flex h-16 items-center justify-between">
         <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
           <!-- Mobile menu button-->
