@@ -56,13 +56,17 @@ Yet, if you're delving into this blog, chances are you're eager to explore beyon
 
 In essence, while Automatic1111 provides a solid foundation for beginners, ComfyUI opens up a world of creative freedom for those ready to delve deeper into the intricacies of image diffusion. 
 
+For a definitive guide for using ComfyUI, I'd recommend checking out the [ComfyUI Documentation](https://stable-diffusion-art.com/comfyui/).
+
 ## ComfyUI - The Basics
 ![ComfyUI](https://res.cloudinary.com/doj03xgr2/image/upload/v1705090547/BlogImages/comfyUI-basic_x7kccq.webp)
 ## More ComfyUI
 ![ComfyUI](https://res.cloudinary.com/doj03xgr2/image/upload/v1705090596/BlogImages/ComfyUI-simple_ir7jly.png)
 
 
-
-
+<video controls class="rounded-lg" width="100%">
+  <source src="https://res.cloudinary.com/doj03xgr2/video/upload/v1694703992/Movies/img_3229t_01c907c795.mov" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 
