@@ -20,5 +20,8 @@ export default defineNuxtConfig({
       preload: ['ts','js','css','java','json','bash','vue', 'python']
     }
   },
+  css: [
+    '@/assets/css/main.css'
+  ]
 })
   

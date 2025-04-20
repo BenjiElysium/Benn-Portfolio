@@ -1,0 +1,6 @@
+html, body {
+  background: linear-gradient(to bottom right, #18181b, #1e1b4b, #312e81);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+} 
