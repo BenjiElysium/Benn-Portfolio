@@ -4,7 +4,8 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     'nuxt-icon',
     '@nuxt/content',
-    '@nuxtjs/cloudinary'
+    '@nuxtjs/cloudinary',
+    '@vueuse/motion/nuxt'
   ],
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,

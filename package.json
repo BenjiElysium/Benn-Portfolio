@@ -20,6 +20,10 @@
   "dependencies": {
     "@headlessui/vue": "^1.7.13",
     "@heroicons/vue": "^2.0.18",
-    "@nuxtjs/cloudinary": "^2.5.2"
+    "@nuxtjs/cloudinary": "^2.5.2",
+    "@vueuse/motion": "^3.0.3",
+    "@yeger/vue-masonry-wall": "^5.0.18",
+    "swiper": "^11.2.6",
+    "typescript": "^5.8.3"
   }
 }

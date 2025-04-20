@@ -1,27 +1,58 @@
 <script setup>
+import CloudinaryMasonryGallery from '~/components/CloudinaryMasonryGallery.vue';
+
 const mediaAssets = [
   { tag: "image-diffusion-PB", mediaType: "image" },
   // { tag: "logi-animation", mediaType: "video" },
   // { tag: "logi-render", mediaType: "spin" }
 ];
+
+const handleImageClick = (image) => {
+  console.log('Image clicked:', image);
+};
 </script>
 
 <style>
-.gallery-wrapper {
-  max-width: 80%; /* Adjust as needed */
-  margin-left: 20px;
-  margin-right: auto;
+.portfolio-heading {
+  background: linear-gradient(90deg, #60A5FA, #818CF8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 </style>
 
-
 <template>
-  <div class="pt-20 mt-4 mb-20">
-      <h1 class="text-3xl font-bold ms-6 mb-2">Portfolio: Generative AI - Image Diffusion</h1>
-      <div class="pt-2">
-        <div class="gallery-wrapper">
-          <CldProductGallery :media-assets="mediaAssets" />
-        </div>
-      </div>
+  <div 
+    v-motion
+    :initial="{ opacity: 0 }"
+    :enter="{ opacity: 1, transition: { duration: 1000 } }"
+    class="pt-24 mb-20">
+    <h1 
+      v-motion
+      :initial="{ opacity: 0, y: 20 }"
+      :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
+      class="text-4xl font-bold mx-auto text-center mb-8 portfolio-heading">
+      Generative AI - Image Diffusion
+    </h1>
+    <p 
+      v-motion
+      :initial="{ opacity: 0 }"
+      :enter="{ opacity: 1, transition: { delay: 400, duration: 800 } }"
+      class="text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-12">
+      AI-generated images created with various diffusion models.
+    </p>
+    <div 
+      v-motion
+      :initial="{ opacity: 0, scale: 0.95 }"
+      :enter="{ opacity: 1, scale: 1, transition: { delay: 600, duration: 1000 } }"
+      class="w-full px-4 md:px-8 lg:px-12 xl:px-16">
+      <CloudinaryMasonryGallery 
+        :media-assets="mediaAssets"
+        :column-width="320"
+        :gap="16"
+        :max-width="1800"
+        @image-click="handleImageClick"
+      />
+    </div>
   </div>
 </template>
