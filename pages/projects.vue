@@ -11,7 +11,7 @@
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-        class="text-4xl font-bold mb-8 text-gradient">Projects & Experience</h1>
+        class="text-4xl font-bold mb-6 text-gradient">Projects & Experience</h1>
       <p 
         v-motion
         :initial="{ opacity: 0 }"

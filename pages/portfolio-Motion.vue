@@ -23,8 +23,8 @@ export default {
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-      class="text-4xl font-bold mb-8 text-center">
-      <span class="bg-gradient-to-r from-purple-400 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
+      class="text-4xl font-bold mb-6 text-center">
+      <span class="bg-gradient-to-r from-purple-500 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
         Portfolio: Motion
       </span>
     </h1>

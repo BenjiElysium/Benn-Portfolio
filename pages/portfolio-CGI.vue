@@ -11,13 +11,6 @@ const handleImageClick = (image) => {
 };
 </script>
 
-<style>
-.gallery-wrapper {
-  max-width: 90%;
-  margin: 0 auto;
-}
-</style>
-
 <template>
   <div
     v-motion
@@ -28,8 +21,8 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
-      class="text-4xl font-bold mb-8 text-center">
-      <span class="bg-gradient-to-r from-purple-400 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
+      class="text-4xl font-bold mb-6 text-center">
+      <span class="bg-gradient-to-r from-purple-500 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
         Product & Environment Renders
       </span>
     </h1>
@@ -37,7 +30,7 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0 }"
       :enter="{ opacity: 1, transition: { delay: 400, duration: 800 } }"
-      class="text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-12">
+      class="text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-8">
       Professional product visualization, CGI environments, and 3D renderings created with Cinema4D, Maya, Nuke, and Photoshop.
     </p>
     <div 
@@ -49,7 +42,7 @@ const handleImageClick = (image) => {
         :media-assets="mediaAssets"
         :column-width="320"
         :gap="16"
-        :max-width="1800"
+        :max-width="2400"
         @image-click="handleImageClick"
       />
     </div>
