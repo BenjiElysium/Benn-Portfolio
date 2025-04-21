@@ -16,13 +16,6 @@ const handleImageClick = (image) => {
   max-width: 90%;
   margin: 0 auto;
 }
-
-.portfolio-heading {
-  background: linear-gradient(90deg, #60A5FA, #818CF8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
 </style>
 
 <template>
@@ -35,7 +28,7 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
-      class="text-4xl font-bold mx-auto text-center mb-8 portfolio-heading">
+      class="text-4xl font-bold mb-8 portfolio-heading">
       Product & Environment Renders
     </h1>
     <p 

@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 800 } }"
@@ -11,13 +11,13 @@
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-        class="text-4xl font-bold mb-6 text-gradient">Projects & Experience</h1>
+        class="text-4xl font-bold mb-8 text-gradient">Projects & Experience</h1>
       <p 
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
         class="mb-6 text-lg max-w-3xl">
-        I'm a developer and designer focused on creating innovative solutions at the intersection of design, code, and generative AI. Explore my projects and professional experience below.
+        I&apos;m a developer and designer focused on creating innovative solutions at the intersection of design, code, and generative AI. Explore my projects and professional experience below.
       </p>
     </div>
 
@@ -383,13 +383,4 @@
       </div>
     </div>
   </div>
-</template>
-
-<style scoped>
-.text-gradient {
-  background: linear-gradient(90deg, #8B5CF6, #3B82F6, #60A5FA);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-</style> 
+</template> 

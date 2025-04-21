@@ -12,15 +12,6 @@ const handleImageClick = (image) => {
 };
 </script>
 
-<style>
-.portfolio-heading {
-  background: linear-gradient(90deg, #60A5FA, #818CF8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-</style>
-
 <template>
   <div 
     v-motion
@@ -30,8 +21,8 @@ const handleImageClick = (image) => {
     <h1 
       v-motion
       :initial="{ opacity: 0, y: 20 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
-      class="text-4xl font-bold mx-auto text-center mb-8 portfolio-heading">
+      :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
+      class="text-4xl font-bold mx-auto mb-8 portfolio-heading">
       Generative AI - Image Diffusion
     </h1>
     <p 

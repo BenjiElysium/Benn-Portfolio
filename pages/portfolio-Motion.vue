@@ -14,9 +14,25 @@ export default {
 </script>
 
 <template>
-  <div class="pt-20 mt-4 mb-20">
-    <h1 class="text-3xl font-bold ms-6 mb-12">Portfolio: Motion</h1>
-    <p class="text-lg ms-6">GenAI Demo IDs: Apple Logo</p>
+  <div 
+    v-motion
+    :initial="{ opacity: 0 }"
+    :enter="{ opacity: 1, transition: { duration: 1000 } }"
+    class="pt-24 mb-20">
+    <h1 
+      v-motion
+      :initial="{ opacity: 0, y: 20 }"
+      :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
+      class="text-4xl font-bold mx-auto mb-8 portfolio-heading">
+      Portfolio: Motion
+    </h1>
+    <p 
+      v-motion
+      :initial="{ opacity: 0 }"
+      :enter="{ opacity: 1, transition: { delay: 400, duration: 800 } }"
+      class="text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-12">
+      GenAI Demo IDs: Apple Logo.
+    </p>
     <div class="grid sm:grid-cols-2 grid-cols-1 gap-4">
       <div v-for="video in videos" :key="video.id" class="rounded-lg overflow-hidden">
         <video controls class="w-full h-auto">

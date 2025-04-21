@@ -37,12 +37,3 @@ const computedCover = (cover) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.text-gradient {
-  background: linear-gradient(90deg, #60A5FA, #818CF8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-</style>
