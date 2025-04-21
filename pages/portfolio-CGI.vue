@@ -19,7 +19,7 @@ const handleImageClick = (image) => {
 </style>
 
 <template>
-  <div 
+  <div
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 1000 } }"
@@ -28,8 +28,10 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
-      class="text-4xl font-bold mb-8 portfolio-heading">
-      Product & Environment Renders
+      class="text-4xl font-bold mb-8 text-center">
+      <span class="bg-gradient-to-r from-purple-400 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
+        Product & Environment Renders
+      </span>
     </h1>
     <p 
       v-motion
