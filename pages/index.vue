@@ -24,17 +24,33 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
       :enter="{ opacity: 1, x: 0, transition: { delay: 300, duration: 1000, ease: 'easeOut' } }">
       <h2 class="text-3xl font-bold mb-6 text-blue-300">Background</h2>
       <div class="space-y-4 text-zinc-200">
-        <p class="text-lg leading-relaxed">
+        <p
+          v-motion
+          :initial="{ opacity: 0 }"
+          :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
+          class="text-lg leading-relaxed">
           I'm a developer and designer with a background in 3D production, design technology, and generative AI systems. My career spans NYC, LA, and now the Bay Area—where I design interactive tools and immersive experiences blending design, code, and machine learning. I hold an MFA in Design Technology and bring a deep passion for computer graphics, speculative design, and future-forward tech.
         </p>
         <h2 class="text-3xl font-bold mb-6 text-blue-300">Core Projects</h2>
-        <p class="text-lg leading-relaxed">
+        <p
+          v-motion
+          :initial="{ opacity: 0 }"
+          :enter="{ opacity: 1, transition: { delay: 500, duration: 700 } }"
+          class="text-lg leading-relaxed">
           I'm the creator of Fluxion, a node-based image generation platform built with Next.js, Supabase, and Replicate, as part of the <a href="https://synthemo.com" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Synthemo</a> ecosystem. The platform empowers visual creators to generate AI art through a node-based UI, leveraging the advanced diffusion models Flux and Photon, with LLM-powered prompt enhancement and fine-grained control over model parameters.
         </p>
-        <p class="text-lg leading-relaxed">
+        <p 
+          v-motion
+          :initial="{ opacity: 0 }"
+          :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
+          class="text-lg leading-relaxed">
           Other ongoing projects include Elysium 2084, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and Hopeflo, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
         </p>
-        <p class="text-lg leading-relaxed">
+        <p 
+          v-motion
+          :initial="{ opacity: 0 }"
+          :enter="{ opacity: 1, transition: { delay: 700, duration: 700 } }"
+          class="text-lg leading-relaxed">
           In parallel, I work as a 3D designer for clients like XYZ, focusing on product visualization, animation, and creative direction across digital campaigns and immersive media.
         </p>
       </div>

@@ -15,7 +15,15 @@
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
         class="text-lg mb-12 leading-relaxed">
-        I am available for projects either remotely or on-site in the Bay Area. Feel free to reach out to discuss availability or any inquiries you might have. You can contact me via email or phone.
+        We take on select design and development projects focused on AI-driven image generation, visual media tools, and creative production workflows. From generative art platforms to custom 3D render pipelines and interactive visual interfaces, we build small to mid-scale solutions that bridge design, code, and emerging media technologies.
+      </p>
+
+      <p 
+        v-motion
+        :initial="{ opacity: 0 }"
+        :enter="{ opacity: 1, transition: { delay: 500, duration: 700 } }"
+        class="text-lg mb-12 leading-relaxed">
+        Based in the Bay Area and available for remote or on-site work. If you’re developing a new creative tool or looking to integrate generative AI into your media pipeline, reach out to discuss project scope and availability.
       </p>
       
       <div 
