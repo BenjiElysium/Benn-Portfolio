@@ -17,7 +17,7 @@ const handleImageClick = (image) => {
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 1000 } }"
-    class="pt-24 mb-20">
+    class="pt-28 mb-20">
     <h1 
       v-motion
       :initial="{ opacity: 0, y: 20}"
