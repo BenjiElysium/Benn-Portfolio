@@ -49,7 +49,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
             class="text-lg leading-relaxed">
-            Other ongoing projects include Elysium 2084, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and Hopeflo, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
+            Other ongoing projects include Elysium 2084, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and <a href="https://hopeflo.org" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Hopeflo</a>, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
           </p>
           <p 
             v-motion
