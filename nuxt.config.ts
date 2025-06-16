@@ -11,7 +11,9 @@ export default defineNuxtConfig({
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
   },
   runtimeConfig: {
-    githubToken: process.env.GITHUB_TOKEN
+    githubToken: process.env.GITHUB_TOKEN,
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET
   },
   content: {
     // https://content.nuxtjs.org/api/configuration

@@ -3,6 +3,7 @@ import CloudinaryMasonryGallery from '~/components/CloudinaryMasonryGallery.vue'
 
 const mediaAssets = [
   { tag: "image-diffusion-PB", mediaType: "image" },
+  { folder: "Fluxion", mediaType: "image" },
   // { tag: "logi-animation", mediaType: "video" },
   // { tag: "logi-render", mediaType: "spin" }
 ];

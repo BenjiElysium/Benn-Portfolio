@@ -45,25 +45,49 @@ const fetchImagesByTag = async (tag) => {
   }
 };
 
-// Load all images from all tags
+// Function to fetch Cloudinary images by folder using our API route
+const fetchImagesByFolder = async (folder) => {
+  try {
+    const response = await fetch(`/api/cloudinary/folder/${folder}`);
+    if (!response.ok) throw new Error('Failed to fetch images from folder');
+    const data = await response.json();
+    return data.resources;
+  } catch (error) {
+    console.error('Error fetching images from folder:', error);
+    return [];
+  }
+};
+
+// Load all images from all tags and folders
 const loadAllImages = async () => {
   loading.value = true;
   items.value = [];
   
   for (const asset of props.mediaAssets) {
     if (asset.mediaType === 'image') {
-      const images = await fetchImagesByTag(asset.tag);
-      const processedImages = images.map(img => ({
-        publicId: img.public_id,
-        format: img.format,
-        version: img.version,
-        url: `https://res.cloudinary.com/doj03xgr2/image/upload/c_scale,w_800/${img.public_id}.${img.format}`,
-        originalUrl: `https://res.cloudinary.com/doj03xgr2/image/upload/${img.public_id}.${img.format}`,
-        width: img.width,
-        height: img.height,
-        aspectRatio: img.width / img.height,
-        tag: asset.tag
-      }));
+      let processedImages = [];
+      
+      // Check if it's a folder or tag
+      if (asset.folder) {
+        const images = await fetchImagesByFolder(asset.folder);
+        // Images from folder API are already processed
+        processedImages = images;
+      } else if (asset.tag) {
+        const images = await fetchImagesByTag(asset.tag);
+        // Process tag-based images
+        processedImages = images.map(img => ({
+          publicId: img.public_id,
+          format: img.format,
+          version: img.version,
+          url: `https://res.cloudinary.com/doj03xgr2/image/upload/c_scale,w_800/${img.public_id}.${img.format}`,
+          originalUrl: `https://res.cloudinary.com/doj03xgr2/image/upload/${img.public_id}.${img.format}`,
+          width: img.width,
+          height: img.height,
+          aspectRatio: img.width / img.height,
+          source: asset.tag
+        }));
+      }
+      
       items.value = [...items.value, ...processedImages];
     }
   }
