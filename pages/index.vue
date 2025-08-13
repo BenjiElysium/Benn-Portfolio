@@ -49,7 +49,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
             class="text-lg leading-relaxed">
-            Other ongoing projects include Elysium 2084, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and <a href="https://hopeflo.org" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Hopeflo</a>, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
+            Other ongoing projects include Elysium System, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and <a href="https://hopeflo.org" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Hopeflo</a>, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
           </p>
           <p 
             v-motion
@@ -134,7 +134,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
           </div>
         </div>
         
-        <!-- Project Card: Elysium 2084 -->
+        <!-- Project Card: Elysium System -->
         <div 
           v-motion
           :initial="{ opacity: 0, y: 20 }"
@@ -148,7 +148,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
             </div>
           </div>
           <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">Elysium 2084</h3>
+            <h3 class="text-xl font-bold mb-2 text-white">Elysium System</h3>
             <p class="text-zinc-300 mb-4">An AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding in a cyberpunk universe with branching storylines.</p>
             
             <div class="flex flex-wrap gap-2 mb-4">
