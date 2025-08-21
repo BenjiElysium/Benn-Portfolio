@@ -34,7 +34,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
             class="text-lg leading-relaxed">
-            I'm a designer and developer with a background in 3D production, design technology, and generative AI systems. My career spans NYC, LA, and now the Bay Area—where I design interactive tools and immersive experiences blending design, code, and machine learning. I hold an MFA in Design Technology and bring a deep passion for computer graphics, speculative design, and future-forward tech.
+            I'm a designer and developer with a background in 3D production, design technology, and generative AI systems. My career spans NYC, LA, and now the Bay Area—where I design and develop interactive tools and immersive experiences blending agentic coding, gen ai, and CGI. I hold an MFA in Design Technology and bring a deep passion for speculative design, and future-forward tech.
           </p>
           <h2 class="text-3xl font-bold mb-6 text-blue-300">Core Projects</h2>
           <p
@@ -56,7 +56,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 700, duration: 700 } }"
             class="text-lg leading-relaxed">
-            In parallel, I work as a 3D designer for studios like <a href="https://wearexyz.com/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">XYZ</a> focusing on product visualization, animation, and creative direction across marketing campaigns and immersive media.
+            In parallel, I work as a 3D designer for studios like <a href="https://wearexyz.com/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">XYZ</a> focusing on product visualization, animation, and creative direction across marketing campaigns and immersive media. I am also a professor at the <a href="https://www.cca.edu/design/mfa-design/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">California College of the Arts</a>, where I teach courses in the MFA Design program.
           </p>
         </div>
       </div>
