@@ -1,10 +1,18 @@
 <script setup>
+import YouTubeEmbed from '~/components/YouTubeEmbed.vue';
+
 const { data: posts } = await useAsyncData('latest-posts', () =>
   queryContent('/blog')
     .sort({ data: 1 })
     .limit(3)
     .find()
 )
+
+// Featured Brand Spec video from Synthemo Creative
+const featuredVideo = {
+  id: 'z0e1Sf_8_vw', // Replace with actual video ID from playlist
+  title: 'Synthemo Creative - Brand Spec'
+};
 </script>
 
 <template>
@@ -93,12 +101,67 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
         </a>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Project Card: Synthemo/Fluxion -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Project Card: Synthemo Creative -->
         <div 
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 700, duration: 600 } }"
+          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
+        >
+          <div class="relative h-48 bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900">
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="text-center">
+                <span class="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 text-transparent bg-clip-text">SYNTHEMO</span>
+                <p class="text-zinc-300 text-sm mt-1">CREATIVE</p>
+              </div>
+            </div>
+            <div class="absolute top-0 right-0 bg-purple-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
+              Brand Spec Lab
+            </div>
+          </div>
+          <div class="p-6">
+            <h3 class="text-xl font-bold mb-2 text-white">Synthemo Creative</h3>
+            <p class="text-zinc-300 mb-4">Cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. Brand Spec creative lab for generative AI.</p>
+            
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">GenAI Motion</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Brand Spec</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Visual Systems</span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <NuxtLink 
+                to="/portfolio-Motion/synthemo-creative" 
+                class="text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 text-sm"
+              >
+                View Collection
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </NuxtLink>
+              <a 
+                href="https://www.instagram.com/synthemo_creative/" 
+                target="_blank"
+                class="text-zinc-400 hover:text-pink-400 transition-colors"
+                aria-label="Instagram"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Card: Synthemo/Fluxion -->
+        <div 
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 600 } }"
           class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-48">
@@ -138,7 +201,7 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
         <div 
           v-motion
           :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 600 } }"
+          :enter="{ opacity: 1, y: 0, transition: { delay: 900, duration: 600 } }"
           class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-48">
@@ -176,12 +239,106 @@ const { data: posts } = await useAsyncData('latest-posts', () =>
       </div>
     </section>
 
+    <!-- Synthemo Creative Video Showcase Section -->
+    <section 
+      class="mt-16"
+      v-motion
+      :initial="{ opacity: 0, y: 50 }"
+      :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 1000 } }">
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">Synthemo Creative</h2>
+          <p class="text-zinc-400 mt-2">Brand Spec + Creative Lab for Generative AI</p>
+        </div>
+        <NuxtLink 
+          to="/portfolio-Motion/synthemo-creative" 
+          class="text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 text-sm"
+        >
+          View Full Collection
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </NuxtLink>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <!-- Featured Video -->
+        <div 
+          v-motion
+          :initial="{ opacity: 0, scale: 0.95 }"
+          :enter="{ opacity: 1, scale: 1, transition: { delay: 900, duration: 800 } }"
+          class="lg:col-span-3"
+        >
+          <YouTubeEmbed 
+            :video-id="featuredVideo.id" 
+            :title="featuredVideo.title"
+          />
+        </div>
+        
+        <!-- Description Panel -->
+        <div 
+          v-motion
+          :initial="{ opacity: 0, x: 30 }"
+          :enter="{ opacity: 1, x: 0, transition: { delay: 1000, duration: 700 } }"
+          class="lg:col-span-2 bg-zinc-800/50 rounded-xl p-6 border border-zinc-700/50"
+        >
+          <h3 class="text-xl font-bold mb-4 text-white">Brand Spec Cinematic Prototypes</h3>
+          <p class="text-zinc-300 mb-4 leading-relaxed">
+            Cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. Each Brand Spec explores the intersection of brand identity and generative AI motion design.
+          </p>
+          <div class="space-y-3 mb-6">
+            <div class="flex items-center gap-3 text-sm text-zinc-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-400">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+              <span>5 Brand Spec Videos</span>
+            </div>
+            <div class="flex items-center gap-3 text-sm text-zinc-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-400">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                <path d="M2 17l10 5 10-5"></path>
+                <path d="M2 12l10 5 10-5"></path>
+              </svg>
+              <span>GenAI Motion Workflows</span>
+            </div>
+          </div>
+          
+          <div class="flex gap-4">
+            <a 
+              href="https://www.youtube.com/@synthemo_creative" 
+              target="_blank"
+              class="flex items-center gap-2 text-sm text-zinc-300 hover:text-red-400 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+              </svg>
+              YouTube
+            </a>
+            <a 
+              href="https://www.instagram.com/synthemo_creative/" 
+              target="_blank"
+              class="flex items-center gap-2 text-sm text-zinc-300 hover:text-pink-400 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              Instagram
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Blog Posts Section -->
     <section 
       class="mb-20 mt-16"
       v-motion
       :initial="{ opacity: 0, y: 50 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 900, duration: 1000 } }">
+      :enter="{ opacity: 1, y: 0, transition: { delay: 1100, duration: 1000 } }">
       <h2 class="text-3xl font-bold mb-8 text-blue-300">Latest Blog Posts</h2>
       <div class="grid md:grid-cols-3 gap-10">
         <Post :posts="posts" />
