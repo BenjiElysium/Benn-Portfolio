@@ -86,7 +86,7 @@
             </div>
             <h3 class="text-xl font-medium text-blue-200">Nvidia</h3>
           </div>
-          <p class="mb-2"><span class="text-blue-300">Position:</span> Technical Artist</p>
+          <p class="mb-2"><span class="text-blue-300">Position:</span> Designer</p>
           <p class="mb-2"><span class="text-blue-300">Duration:</span> 3 years</p>
           <p class="text-zinc-300 text-sm">Developed real-time rendering solutions and GPU-accelerated creative workflows for internal and partner projects.</p>
         </div>
@@ -163,7 +163,7 @@
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-              <span class="text-zinc-300">Web Development</span>
+              <span class="text-zinc-300">Event Visual Design</span>
             </div>
             <div class="flex items-center space-x-2">
               <div class="bg-blue-500/10 p-1 rounded-full">
@@ -179,7 +179,7 @@
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-              <span class="text-zinc-300">Animation</span>
+              <span class="text-zinc-300">Motion Design</span>
             </div>
           </div>
         </div>
@@ -217,11 +217,51 @@
       
       <!-- Project Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Project Card: Synthemo/Fluxion -->
+        <!-- Project Card: Synthemo Creative -->
         <div 
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1300, duration: 600 } }"
+          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
+        >
+          <div class="relative h-52">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526868/SynthemoLP/SynthemoCreative-LP-2026jpg_h7iewl.jpg" alt="Synthemo Creative" class="w-full h-full object-cover">
+            <div class="absolute top-0 right-0 bg-purple-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
+              Brand Spec Lab
+            </div>
+          </div>
+          <div class="p-6">
+            <h3 class="text-xl font-bold mb-2 text-white">Synthemo Creative</h3>
+            <p class="text-zinc-300 mb-4">Cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. Brand Spec creative lab for generative AI.</p>
+            
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">GenAI Motion</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Brand Spec</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Visual Systems</span>
+            </div>
+            
+            <div class="flex justify-start">
+              <a 
+                href="https://synthemo.com" 
+                target="_blank" 
+                class="text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 text-sm"
+              >
+                Visit Project
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Project Card: Synthemo/Fluxion -->
+        <div 
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :enter="{ opacity: 1, y: 0, transition: { delay: 1400, duration: 600 } }"
           class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
@@ -244,7 +284,7 @@
             
             <div class="flex justify-start">
               <a 
-                href="https://synthemo.com" 
+                href="https://app.synthemo.com" 
                 target="_blank" 
                 class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
               >
@@ -263,7 +303,7 @@
         <div 
           v-motion
           :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1400, duration: 600 } }"
+          :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 600 } }"
           class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">

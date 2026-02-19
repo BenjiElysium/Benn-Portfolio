@@ -50,19 +50,26 @@ const featuredVideo = {
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 500, duration: 700 } }"
             class="text-lg leading-relaxed">
-            I'm the creator of Fluxion, a node-based image generation platform built with Next.js, Supabase, and Replicate, as part of the <a href="https://synthemo.com" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Synthemo</a> ecosystem. The platform empowers visual creators to generate AI art through a node-based UI, leveraging the advanced diffusion models Flux and Photon, with LLM-powered prompt enhancement and fine-grained control over model parameters.
+            I'm the founder of <a href="https://synthemo.com" target="_blank" rel="noopener noreferrer" class="text-purple-400 hover:text-purple-300 underline">Synthemo Creative</a>, a brand films service and lab exploring cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. We work like a small studio: clear creative direction, fast prototyping, and disciplined finishing. AI helps us explore—taste and craft do the final pass.
+          </p>
+          <p
+            v-motion
+            :initial="{ opacity: 0 }"
+            :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
+            class="text-lg leading-relaxed">
+            Within the Synthemo ecosystem, I also built <a href="https://app.synthemo.com" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Fluxion</a>, a node-based image generation platform using Next.js, Supabase, and Replicate. It empowers visual creators to generate AI art through a modular UI, leveraging diffusion models with LLM-powered prompt enhancement.
           </p>
           <p 
             v-motion
             :initial="{ opacity: 0 }"
-            :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
+            :enter="{ opacity: 1, transition: { delay: 700, duration: 700 } }"
             class="text-lg leading-relaxed">
             Other ongoing projects include Elysium System, an AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding, and <a href="https://hopeflo.org" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Hopeflo</a>, a civic-focused platform that combines a positive news aggregator with tools for community-driven action. Designed to surface hopeful narratives and foster engagement across personal, local, and creative spheres.
           </p>
           <p 
             v-motion
             :initial="{ opacity: 0 }"
-            :enter="{ opacity: 1, transition: { delay: 700, duration: 700 } }"
+            :enter="{ opacity: 1, transition: { delay: 800, duration: 700 } }"
             class="text-lg leading-relaxed">
             In parallel, I work as a 3D designer for studios like <a href="https://wearexyz.com/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">XYZ</a> focusing on product visualization, animation, and creative direction across marketing campaigns and immersive media. I am also a professor at the <a href="https://www.cca.edu/design/mfa-design/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">California College of the Arts</a>, where I teach courses in the MFA Design program.
           </p>
@@ -76,7 +83,7 @@ const featuredVideo = {
         :enter="{ opacity: 1, scale: 1, x: 0, transition: { delay: 500, duration: 1000, ease: 'easeOut' } }">
         <div class="relative">
           <div class="absolute inset-0 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 blur-lg"></div>
-          <img src="~/assets/images/Philip-Gradient1.jpg" class="relative object-cover rounded-lg shadow-xl" />
+          <img src="~/assets/images/Philip_Headshot1-web.jpg" class="relative object-cover rounded-lg shadow-xl" />
         </div>
       </div>
     </section>
@@ -109,13 +116,8 @@ const featuredVideo = {
           :enter="{ opacity: 1, y: 0, transition: { delay: 700, duration: 600 } }"
           class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
         >
-          <div class="relative h-48 bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900">
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="text-center">
-                <span class="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 text-transparent bg-clip-text">SYNTHEMO</span>
-                <p class="text-zinc-300 text-sm mt-1">CREATIVE</p>
-              </div>
-            </div>
+          <div class="relative h-48">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526869/SynthemoLP/SynthemoCreative-FramerLayout_z2vvy5.jpg" alt="Synthemo Creative" class="w-full h-full object-cover">
             <div class="absolute top-0 right-0 bg-purple-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
               Brand Spec Lab
             </div>
@@ -182,7 +184,7 @@ const featuredVideo = {
             
             <div class="flex justify-start">
               <a 
-                href="https://synthemo.com" 
+                href="https://app.synthemo.com" 
                 target="_blank" 
                 class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
               >
