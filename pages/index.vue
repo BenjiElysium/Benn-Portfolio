@@ -1,13 +1,6 @@
 <script setup>
 import YouTubeEmbed from '~/components/YouTubeEmbed.vue';
 
-const { data: posts } = await useAsyncData('latest-posts', () =>
-  queryContent('/blog')
-    .sort({ data: 1 })
-    .limit(3)
-    .find()
-)
-
 // Featured Brand Spec video from Synthemo Creative
 const featuredVideo = {
   id: 'z0e1Sf_8_vw', // Replace with actual video ID from playlist
@@ -335,17 +328,6 @@ const featuredVideo = {
       </div>
     </section>
 
-    <!-- Blog Posts Section -->
-    <section 
-      class="mb-20 mt-16"
-      v-motion
-      :initial="{ opacity: 0, y: 50 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 1100, duration: 1000 } }">
-      <h2 class="text-3xl font-bold mb-8 text-blue-300">Latest Blog Posts</h2>
-      <div class="grid md:grid-cols-3 gap-10">
-        <Post :posts="posts" />
-      </div>
-    </section>
   </div>
 </template>
 

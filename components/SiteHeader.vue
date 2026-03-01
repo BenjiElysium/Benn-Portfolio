@@ -32,7 +32,6 @@ const navigation = [
   { name: 'Portfolio: CGI', href: '/portfolio-CGI', current: route.name == 'portfolio-CGI' },
   { name: 'Portfolio: GenAI', href: '/portfolio-GenAI', current: route.name == 'portfolio-GenAI' },
   { name: 'Portfolio: Motion', href: '/portfolio-Motion', current: route.name == 'portfolio-Motion' },
-  { name: 'Blog', href: '/blog', current: route.name.includes('blog') },
   { name: 'Contact', href: '/contact', current: route.name == 'contact' },
 ]
 </script>
