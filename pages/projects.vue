@@ -33,7 +33,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.9 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 600, duration: 700 } }"
-          href="/PhilipBennResume-2025.pdf" 
+          href="/PhilipBennResume-2026.pdf" 
           download 
           class="px-5 py-2.5 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-700/90 hover:to-indigo-700/90 text-white rounded-md hover:shadow-lg transition-all duration-300 inline-flex items-center gap-2 shadow-md"
         >
