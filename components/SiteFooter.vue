@@ -28,7 +28,7 @@ const links = [
 
 <template>
   <footer 
-    class="footer"
+    class="motion-initial footer"
     v-motion
     :initial="{ opacity: 0, y: 20 }"
     :enter="{ opacity: 1, y: 0, transition: { delay: 600, duration: 800 } }">
@@ -44,7 +44,7 @@ const links = [
           v-motion
           :initial="{ opacity: 0, scale: 0.8 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 800 + (index * 100), duration: 600 } }"
-          class="social-icon">
+          class="motion-initial social-icon">
           <Icon :name="link.icon" size="1.5rem" class="text-gray-300" />
         </a>
       </div>

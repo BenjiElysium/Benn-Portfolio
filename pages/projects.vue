@@ -3,7 +3,7 @@
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 800 } }"
-    class="flex flex-col justify-center p-6 max-w-7xl mx-auto">
+    class="motion-initial flex flex-col justify-center p-6 max-w-7xl mx-auto">
     
     <!-- Page Header Section -->
     <div class="pt-24 pb-8">
@@ -11,12 +11,12 @@
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-        class="text-4xl font-bold mb-6 text-gradient">Projects & Experience</h1>
+        class="motion-initial text-4xl font-bold mb-6 text-gradient">Projects & Experience</h1>
       <p 
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
-        class="mb-6 text-lg max-w-3xl">
+        class="motion-initial mb-6 text-lg max-w-3xl">
         I&apos;m a developer and designer focused on creating innovative solutions at the intersection of design, code, and generative AI. Explore my projects and professional experience below.
       </p>
     </div>
@@ -26,16 +26,16 @@
       v-motion
       :initial="{ opacity: 0, y: 30 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 500, duration: 800 } }"
-      class="w-full mb-12">
+      class="motion-initial w-full mb-12">
       <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
         <h2 class="text-2xl font-semibold text-blue-300">Professional Experience</h2>
         <a 
           v-motion
           :initial="{ opacity: 0, scale: 0.9 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 600, duration: 700 } }"
+          class="motion-initial px-5 py-2.5 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-700/90 hover:to-indigo-700/90 text-white rounded-md hover:shadow-lg transition-all duration-300 inline-flex items-center gap-2 shadow-md"
           href="/PhilipBennResume-2026.pdf" 
-          download 
-          class="px-5 py-2.5 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-700/90 hover:to-indigo-700/90 text-white rounded-md hover:shadow-lg transition-all duration-300 inline-flex items-center gap-2 shadow-md"
+          download
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -53,7 +53,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.95 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 700, duration: 600 } }"
-          class="bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="flex items-center mb-4">
             <div class="bg-blue-500/20 p-2 rounded-full mr-4">
@@ -74,7 +74,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.95 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 800, duration: 600 } }"
-          class="bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="flex items-center mb-4">
             <div class="bg-blue-500/20 p-2 rounded-full mr-4">
@@ -96,7 +96,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.95 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 900, duration: 600 } }"
-          class="bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="flex items-center mb-4">
             <div class="bg-blue-500/20 p-2 rounded-full mr-4">
@@ -120,7 +120,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.95 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 1000, duration: 600 } }"
-          class="bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="flex items-center mb-4">
             <div class="bg-blue-500/20 p-2 rounded-full mr-4">
@@ -189,7 +189,7 @@
           v-motion
           :initial="{ opacity: 0, scale: 0.95 }"
           :enter="{ opacity: 1, scale: 1, transition: { delay: 1100, duration: 600 } }"
-          class="bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="flex items-center mb-4">
             <div class="bg-blue-500/20 p-2 rounded-full mr-4">
@@ -212,7 +212,7 @@
       v-motion
       :initial="{ opacity: 0, y: 30 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 1200, duration: 800 } }"
-      class="w-full mb-16">
+      class="motion-initial w-full mb-16">
       <h2 class="text-2xl font-semibold mb-8 text-blue-300">Featured Projects</h2>
       
       <!-- Project Cards -->
@@ -222,7 +222,7 @@
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1300, duration: 600 } }"
-          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
             <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526868/SynthemoLP/SynthemoCreative-LP-2026jpg_h7iewl.jpg" alt="Synthemo Creative" class="w-full h-full object-cover">
@@ -262,7 +262,7 @@
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1400, duration: 600 } }"
-          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
             <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176223/SynthemoLP/Fluxion-April2025_ovrimh.png" alt="Synthemo Fluxion" class="w-full h-full object-cover">
@@ -304,7 +304,7 @@
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 600 } }"
-          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
             <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1697726328/Elysium2084WebApp/Elysium_5_rprhj6.jpg" alt="Elysium 2084" class="w-full h-full object-cover">
@@ -346,7 +346,7 @@
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 600 } }"
-          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
             <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176761/Hopeflo/Hopeflo_1_ztwwy4.jpg" alt="Hopeflo" class="w-full h-full object-cover">
@@ -388,7 +388,7 @@
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 1600, duration: 600 } }"
-          class="bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
+          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
         >
           <div class="relative h-52">
             <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1702515925/LandingPage-Images/Elysium-SDXL_img2img_00002_yw0y6f.png" alt="NovelSpace" class="w-full h-full object-cover">

@@ -14,7 +14,7 @@ const computedCover = (cover) => {
     v-motion
     :initial="{ opacity: 0, y: 50 }"
     :enter="{ opacity: 1, y: 0, transition: { delay: 100 * index, duration: 800 } }"
-    class="flex flex-col bg-zinc-900/50 rounded-lg shadow-xl overflow-hidden hover:shadow-blue-500/20 hover:translate-y-[-8px] transition-all duration-500">
+    class="motion-initial flex flex-col bg-zinc-900/50 rounded-lg shadow-xl overflow-hidden hover:shadow-blue-500/20 hover:translate-y-[-8px] transition-all duration-500">
     <NuxtLink :to="post._path" class="flex-shrink-0 overflow-hidden">
       <!-- Image container with hover effect -->
       <div class="relative w-full h-64 overflow-hidden">

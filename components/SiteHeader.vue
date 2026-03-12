@@ -90,7 +90,7 @@ const navigation = [
     :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
     as="nav" 
     :class="{ 'hidden-navbar': !isNavbarVisible, 'visible-navbar': isNavbarVisible }" 
-    class="navbar bg-zinc-900/80" 
+    class="motion-initial navbar bg-zinc-900/80" 
     v-slot="{ open }">
     <div class="mx-4 max-w-7xl px-2 sm:px-6 lg:px-8">
       <div class="relative flex h-16 items-center justify-between">
@@ -109,7 +109,7 @@ const navigation = [
             v-motion
             :initial="{ opacity: 0, scale: 0.9 }"
             :enter="{ opacity: 1, scale: 1, transition: { delay: 300, duration: 800 } }"
-            class="flex flex-shrink-0 items-center">
+            class="motion-initial flex flex-shrink-0 items-center">
             <img class="block h-8 w-auto lg:hidden" src="https://res.cloudinary.com/doj03xgr2/image/upload/v1705330798/LandingPage-Images/PB-logo-white_yhxp4k.svg"
               alt="Philip Benn" />
             <img class="hidden h-8 w-auto lg:block" src="https://res.cloudinary.com/doj03xgr2/image/upload/v1705330798/LandingPage-Images/PB-logo-white_yhxp4k.svg"
@@ -126,7 +126,7 @@ const navigation = [
                 :enter="{ opacity: 1, y: 0, transition: { delay: 400 + (index * 100), duration: 600 } }"
                 :class="[
                   item.current ? 'bg-zinc-800/80 text-white active' : 'text-gray-300 hover:text-white', 
-                  'rounded-md px-3 py-2 text-sm font-medium nav-link'
+                  'motion-initial rounded-md px-3 py-2 text-sm font-medium nav-link'
                 ]"
                 :aria-current="item.current ? 'page' : undefined">
                 {{ item.name }}
@@ -149,7 +149,7 @@ const navigation = [
           :enter="{ opacity: 1, x: 0, transition: { delay: 150 + (index * 75), duration: 500 } }"
           :class="[
             item.current ? 'bg-zinc-800/90 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 
-            'block rounded-md px-3 py-2 text-base font-medium'
+            'motion-initial block rounded-md px-3 py-2 text-base font-medium'
           ]"
           :aria-current="item.current ? 'page' : undefined">
           {{ item.name }}

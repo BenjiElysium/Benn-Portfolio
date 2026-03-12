@@ -9,19 +9,19 @@ const { data: posts } = await useAsyncData('posts', () =>
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 800 } }"
-    class="flex flex-col justify-center p-6 max-w-7xl mx-auto">
+    class="motion-initial flex flex-col justify-center p-6 max-w-7xl mx-auto">
   <div class="pt-24 pb-8">
     <h1 
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-        class="text-4xl font-bold mb-6 text-gradient">Blog Posts</h1>
+        class="motion-initial text-4xl font-bold mb-6 text-gradient">Blog Posts</h1>
 
     <p 
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
-        class="text-lg mb-12 leading-relaxed">
+        class="motion-initial text-lg mb-12 leading-relaxed">
         I regularly write about the projects I’m working on, along with tools, trends, and ideas that spark curiosity. If you’re interested in collaborating on a piece or would like to invite me as a guest contributor, feel free to get in touch via the Contact page.
     </p>
 

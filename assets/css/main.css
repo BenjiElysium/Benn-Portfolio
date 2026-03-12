@@ -3,4 +3,9 @@ html, body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-} 
+}
+
+/* Prevent SSR/hydration flash: elements start hidden, @vueuse/motion takes over after hydration */
+.motion-initial {
+  opacity: 0;
+}

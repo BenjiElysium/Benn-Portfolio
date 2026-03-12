@@ -24,14 +24,14 @@ const appleVideos = [
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 1000 } }"
-    class="pt-28 mb-20 max-w-7xl mx-auto px-6">
+    class="motion-initial pt-28 mb-20 max-w-7xl mx-auto px-6">
     
     <!-- Page Header -->
     <h1 
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-      class="text-4xl font-bold mb-6 text-center">
+      class="motion-initial text-4xl font-bold mb-6 text-center">
       <span class="bg-gradient-to-r from-purple-500 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
         Portfolio: Motion
       </span>
@@ -40,7 +40,7 @@ const appleVideos = [
       v-motion
       :initial="{ opacity: 0 }"
       :enter="{ opacity: 1, transition: { delay: 400, duration: 800 } }"
-      class="text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-16">
+      class="motion-initial text-lg text-zinc-300 max-w-3xl mx-auto text-center mb-16">
       GenAI motion design, cinematic prototypes, and visual systems.
     </p>
 
@@ -49,7 +49,7 @@ const appleVideos = [
       v-motion
       :initial="{ opacity: 0, y: 30 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 500, duration: 800 } }"
-      class="mb-20">
+      class="motion-initial mb-20">
       
       <!-- Section Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -96,7 +96,7 @@ const appleVideos = [
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
-        class="bg-zinc-800/30 border border-zinc-700/50 rounded-xl p-6 mb-8">
+        class="motion-initial bg-zinc-800/30 border border-zinc-700/50 rounded-xl p-6 mb-8">
         <p class="text-zinc-300 leading-relaxed">
           Cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. 
           Each Brand Spec explores the intersection of brand identity and generative AI motion design, 
@@ -111,7 +111,7 @@ const appleVideos = [
           v-motion
           :initial="{ opacity: 0 }"
           :enter="{ opacity: 1, transition: { delay: 700, duration: 600 } }"
-          class="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin"
+          class="motion-initial flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin"
         >
           <div 
             v-for="(video, index) in brandSpecVideos" 
@@ -119,7 +119,7 @@ const appleVideos = [
             v-motion
             :initial="{ opacity: 0, x: 30 }"
             :enter="{ opacity: 1, x: 0, transition: { delay: 700 + (index * 100), duration: 600 } }"
-            class="flex-shrink-0 w-[320px] md:w-[400px] snap-start"
+            class="motion-initial flex-shrink-0 w-[320px] md:w-[400px] snap-start"
           >
             <YouTubeEmbed 
               :video-id="video.id" 
@@ -134,7 +134,7 @@ const appleVideos = [
           v-motion
           :initial="{ opacity: 0 }"
           :enter="{ opacity: 1, transition: { delay: 1200, duration: 600 } }"
-          class="flex items-center justify-center gap-2 mt-4 text-zinc-500 text-sm"
+          class="motion-initial flex items-center justify-center gap-2 mt-4 text-zinc-500 text-sm"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
@@ -154,7 +154,8 @@ const appleVideos = [
     <section 
       v-motion
       :initial="{ opacity: 0, y: 30 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 800 } }">
+      :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 800 } }"
+      class="motion-initial">
       
       <div class="mb-8">
         <h2 class="text-2xl font-bold text-blue-300 mb-2">GenAI Demo IDs: Apple Logo</h2>
@@ -168,7 +169,7 @@ const appleVideos = [
           v-motion
           :initial="{ opacity: 0, y: 20 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 900 + (index * 100), duration: 600 } }"
-          class="rounded-lg overflow-hidden bg-zinc-800/30 border border-zinc-700/50"
+          class="motion-initial rounded-lg overflow-hidden bg-zinc-800/30 border border-zinc-700/50"
         >
           <video controls class="w-full h-auto">
             <source :src="video.src" type="video/mp4">

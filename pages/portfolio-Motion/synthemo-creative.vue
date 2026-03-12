@@ -36,7 +36,7 @@ const brandSpecVideos = [
     v-motion
     :initial="{ opacity: 0 }"
     :enter="{ opacity: 1, transition: { duration: 1000 } }"
-    class="pt-28 mb-20 max-w-7xl mx-auto px-6">
+    class="motion-initial pt-28 mb-20 max-w-7xl mx-auto px-6">
     
     <!-- Back Navigation -->
     <NuxtLink 
@@ -44,7 +44,7 @@ const brandSpecVideos = [
       v-motion
       :initial="{ opacity: 0, x: -20 }"
       :enter="{ opacity: 1, x: 0, transition: { delay: 200, duration: 500 } }"
-      class="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
+      class="motion-initial inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -58,7 +58,7 @@ const brandSpecVideos = [
       v-motion
       :initial="{ opacity: 0, y: 30 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 300, duration: 800 } }"
-      class="text-center mb-16">
+      class="motion-initial text-center mb-16">
       
       <!-- Logo / Brand Mark -->
       <div class="mb-6">
@@ -73,7 +73,7 @@ const brandSpecVideos = [
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 500, duration: 700 } }"
-        class="text-xl text-zinc-300 max-w-2xl mx-auto mb-6">
+        class="motion-initial text-xl text-zinc-300 max-w-2xl mx-auto mb-6">
         Brand Spec + Creative Lab for Generative AI
       </p>
       
@@ -82,7 +82,7 @@ const brandSpecVideos = [
         v-motion
         :initial="{ opacity: 0 }"
         :enter="{ opacity: 1, transition: { delay: 600, duration: 700 } }"
-        class="text-zinc-400 max-w-3xl mx-auto leading-relaxed">
+        class="motion-initial text-zinc-400 max-w-3xl mx-auto leading-relaxed">
         Cinematic prototypes, craft process studies, and visual systems—built with modern GenAI workflows.
         Created by Philip Benn.
       </p>
@@ -93,7 +93,7 @@ const brandSpecVideos = [
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 700, duration: 600 } }"
-      class="flex flex-wrap justify-center items-center gap-6 mb-16">
+      class="motion-initial flex flex-wrap justify-center items-center gap-6 mb-16">
       
       <a 
         href="https://www.youtube.com/@synthemo_creative" 
@@ -139,7 +139,7 @@ const brandSpecVideos = [
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 600 } }"
-        class="text-2xl font-bold text-purple-300 mb-8">
+        class="motion-initial text-2xl font-bold text-purple-300 mb-8">
         Brand Spec Collection
       </h2>
       
@@ -150,7 +150,7 @@ const brandSpecVideos = [
           v-motion
           :initial="{ opacity: 0, y: 30 }"
           :enter="{ opacity: 1, y: 0, transition: { delay: 900 + (index * 150), duration: 700 } }"
-          class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"
+          class="motion-initial grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"
         >
           <!-- Video Embed -->
           <div class="lg:col-span-2">
@@ -179,7 +179,7 @@ const brandSpecVideos = [
       v-motion
       :initial="{ opacity: 0, y: 30 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 700 } }"
-      class="mt-20 text-center">
+      class="motion-initial mt-20 text-center">
       
       <div class="bg-gradient-to-br from-purple-900/30 via-zinc-800/50 to-blue-900/30 border border-zinc-700/50 rounded-2xl p-10">
         <h2 class="text-2xl font-bold text-white mb-4">Interested in Collaboration?</h2>
