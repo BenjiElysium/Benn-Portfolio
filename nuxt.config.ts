@@ -5,7 +5,8 @@ export default defineNuxtConfig({
     'nuxt-icon',
     '@nuxt/content',
     '@nuxtjs/cloudinary',
-    '@vueuse/motion/nuxt'
+    '@vueuse/motion/nuxt',
+    '@vercel/analytics'
   ],
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
