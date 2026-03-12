@@ -21,6 +21,7 @@
     "@headlessui/vue": "^1.7.13",
     "@heroicons/vue": "^2.0.18",
     "@nuxtjs/cloudinary": "^2.5.2",
+    "@vercel/analytics": "^2.0.1",
     "@vueuse/motion": "^3.0.3",
     "@yeger/vue-masonry-wall": "^5.0.18",
     "swiper": "^11.2.6",
