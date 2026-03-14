@@ -2,428 +2,387 @@
   <div
     v-motion
     :initial="{ opacity: 0 }"
-    :enter="{ opacity: 1, transition: { duration: 800 } }"
-    class="motion-initial flex flex-col justify-center p-6 max-w-7xl mx-auto">
-    
-    <!-- Page Header Section -->
-    <div class="pt-24 pb-8">
-      <h1 
+    :enter="{ opacity: 1, transition: { duration: 600 } }"
+    class="motion-initial flex flex-col p-6 max-w-7xl mx-auto">
+
+    <!-- Page Header -->
+    <div class="pt-24 pb-12">
+      <h1
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 700 } }"
-        class="motion-initial text-4xl font-bold mb-6 text-gradient">Projects & Experience</h1>
-      <p 
+        class="motion-initial text-4xl sm:text-5xl font-medium leading-tight mb-4 text-gradient">
+        Projects &amp; Experience
+      </h1>
+      <p
         v-motion
         :initial="{ opacity: 0 }"
-        :enter="{ opacity: 1, transition: { delay: 400, duration: 700 } }"
-        class="motion-initial mb-6 text-lg max-w-3xl">
-        I&apos;m a developer and designer focused on creating innovative solutions at the intersection of design, code, and generative AI. Explore my projects and professional experience below.
+        :enter="{ opacity: 1, transition: { delay: 350, duration: 700 } }"
+        class="motion-initial text-lg text-zinc-500 max-w-2xl">
+        Creative Technologist building at the intersection of generative AI, 3D production, and full-stack development.
       </p>
     </div>
 
-    <!-- Experience Highlights Section -->
-    <div 
-      v-motion
-      :initial="{ opacity: 0, y: 30 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 500, duration: 800 } }"
-      class="motion-initial w-full mb-12">
-      <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
-        <h2 class="text-2xl font-semibold text-blue-300">Professional Experience</h2>
-        <a 
+    <!-- ── Professional Experience ─────────────────────────── -->
+    <section class="mb-20">
+      <div class="flex justify-between items-center flex-wrap gap-4 mb-10">
+        <h2
           v-motion
-          :initial="{ opacity: 0, scale: 0.9 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 600, duration: 700 } }"
-          class="motion-initial px-5 py-2.5 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-700/90 hover:to-indigo-700/90 text-white rounded-md hover:shadow-lg transition-all duration-300 inline-flex items-center gap-2 shadow-md"
-          href="/PhilipBennResume-2026.pdf" 
-          download
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
+          :initial="{ opacity: 0, y: 16 }"
+          :enter="{ opacity: 1, y: 0, transition: { delay: 400, duration: 600 } }"
+          class="motion-initial text-xl font-semibold text-zinc-100">
+          Professional Experience
+        </h2>
+        <a
+          v-motion
+          :initial="{ opacity: 0 }"
+          :enter="{ opacity: 1, transition: { delay: 500, duration: 600 } }"
+          class="motion-initial px-4 py-2 border border-zinc-700 text-zinc-300 text-sm font-medium rounded-md hover:border-zinc-500 hover:text-white transition-colors inline-flex items-center gap-2"
+          href="/Philip Benn Resume 2026.pdf"
+          download>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Download Full Resume
+          Download Resume
         </a>
       </div>
-      
-      <!-- Experience Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Experience Card: Logitech -->
-        <div 
-          v-motion
-          :initial="{ opacity: 0, scale: 0.95 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 700, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="flex items-center mb-4">
-            <div class="bg-blue-500/20 p-2 rounded-full mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
-            </div>
-            <h3 class="text-xl font-medium text-blue-200">Logitech</h3>
-          </div>
-          <p class="mb-2"><span class="text-blue-300">Position:</span> Senior 3D Designer</p>
-          <p class="mb-2"><span class="text-blue-300">Duration:</span> 4 years</p>
-          <p class="text-zinc-300 text-sm">Led product visualization initiatives and developed 3D workflows for marketing campaigns across the product line.</p>
-        </div>
-        
-        <!-- Experience Card: Nvidia -->
-        <div 
-          v-motion
-          :initial="{ opacity: 0, scale: 0.95 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 800, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="flex items-center mb-4">
-            <div class="bg-blue-500/20 p-2 rounded-full mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
-            </div>
-            <h3 class="text-xl font-medium text-blue-200">Nvidia</h3>
-          </div>
-          <p class="mb-2"><span class="text-blue-300">Position:</span> Designer</p>
-          <p class="mb-2"><span class="text-blue-300">Duration:</span> 3 years</p>
-          <p class="text-zinc-300 text-sm">Developed real-time rendering solutions and GPU-accelerated creative workflows for internal and partner projects.</p>
-        </div>
-        
-        <!-- Experience Card: Freelance -->
-        <div 
-          v-motion
-          :initial="{ opacity: 0, scale: 0.95 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 900, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="flex items-center mb-4">
-            <div class="bg-blue-500/20 p-2 rounded-full mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-            </div>
-            <h3 class="text-xl font-medium text-blue-200">Freelance Digital Artist</h3>
-          </div>
-          <p class="mb-2"><span class="text-blue-300">Locations:</span> NYC, LA, Bay Area</p>
-          <p class="mb-2"><span class="text-blue-300">Specialization:</span> 3D Production</p>
-          <p class="text-zinc-300 text-sm">Created 3D assets, visualizations, and interactive experiences for clients in entertainment, tech, and advertising.</p>
-        </div>
-      </div>
-      
-      <!-- Skills & Education -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <!-- Skills -->
-        <div 
-          v-motion
-          :initial="{ opacity: 0, scale: 0.95 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 1000, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="flex items-center mb-4">
-            <div class="bg-blue-500/20 p-2 rounded-full mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                <path d="M17 6.1H3"></path>
-                <path d="M21 12.1H3"></path>
-                <path d="M15.1 18H3"></path>
-              </svg>
-            </div>
-            <h3 class="text-xl font-medium text-blue-200">Key Skills</h3>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">3D Production</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">Product Rendering</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">Generative AI</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">Event Visual Design</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">UX/UI Design</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="bg-blue-500/10 p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span class="text-zinc-300">Motion Design</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Education -->
-        <div 
-          v-motion
-          :initial="{ opacity: 0, scale: 0.95 }"
-          :enter="{ opacity: 1, scale: 1, transition: { delay: 1100, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 p-6 rounded-xl shadow-lg border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="flex items-center mb-4">
-            <div class="bg-blue-500/20 p-2 rounded-full mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-              </svg>
-            </div>
-            <h3 class="text-xl font-medium text-blue-200">Education</h3>
-          </div>
-          <p class="mb-2"><span class="text-blue-300">Degree:</span> MFA in Design Technology</p>
-          <p class="mb-2"><span class="text-blue-300">Institution:</span> San Francisco Art Institute</p>
-          <p class="text-zinc-300 text-sm">Specialized in interactive design, digital fabrication, and immersive technologies with a thesis on algorithmic aesthetics and participatory media.</p>
-        </div>
-      </div>
-    </div>
 
-    <!-- Portfolio Projects Section -->
-    <div 
-      v-motion
-      :initial="{ opacity: 0, y: 30 }"
-      :enter="{ opacity: 1, y: 0, transition: { delay: 1200, duration: 800 } }"
-      class="motion-initial w-full mb-16">
-      <h2 class="text-2xl font-semibold mb-8 text-blue-300">Featured Projects</h2>
-      
-      <!-- Project Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Project Card: Synthemo Creative -->
-        <div 
+      <!-- Timeline -->
+      <div class="relative">
+        <div class="absolute left-0 top-0 bottom-0 w-px bg-zinc-800"></div>
+
+        <!-- Synthemo Creative -->
+        <div
           v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1300, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-purple-900/10 hover:shadow-xl"
-        >
-          <div class="relative h-52">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526868/SynthemoLP/SynthemoCreative-LP-2026jpg_h7iewl.jpg" alt="Synthemo Creative" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-purple-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
-              Brand Spec Lab
-            </div>
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 0, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-10">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-indigo-400"></div>
+          <div class="flex flex-wrap items-center gap-3 mb-1">
+            <a href="https://synthemo.com" target="_blank" rel="noopener noreferrer"
+              class="text-base font-semibold text-zinc-100 hover:text-indigo-300 transition-colors">
+              Synthemo Creative
+            </a>
+            <span class="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-medium">Current</span>
           </div>
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">Synthemo Creative</h3>
-            <p class="text-zinc-300 mb-4">Cinematic prototypes, craft process studies, and visual systems built with modern GenAI workflows. Brand Spec creative lab for generative AI.</p>
-            
-            <div class="flex flex-wrap gap-2 mb-4">
-              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">GenAI Motion</span>
-              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Brand Spec</span>
-              <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Visual Systems</span>
-            </div>
-            
-            <div class="flex justify-start">
-              <a 
-                href="https://synthemo.com" 
-                target="_blank" 
-                class="text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 text-sm"
-              >
-                Visit Project
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </div>
-          </div>
+          <p class="text-sm text-zinc-500 mb-3">Art Director &amp; Developer &nbsp;·&nbsp; 2024–Present</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Founded creative studio specializing in generative AI workflows for brand content.</li>
+            <li>Produces cinematic brand films and marketing assets using custom ML pipelines: Flux, Veo, NanoBanana, ComfyUI, and LLM integrations.</li>
+            <li>Focus on rapid prototyping and premium motion delivery.</li>
+          </ul>
         </div>
-        
-        <!-- Project Card: Synthemo/Fluxion -->
-        <div 
+
+        <!-- California College of Art -->
+        <div
           v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1400, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="relative h-52">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176223/SynthemoLP/Fluxion-April2025_ovrimh.png" alt="Synthemo Fluxion" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-blue-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
-              Node-based AI
-            </div>
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 80, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-10">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-indigo-400"></div>
+          <div class="flex flex-wrap items-center gap-3 mb-1">
+            <a href="https://portal.cca.edu/people/pbenn" target="_blank" rel="noopener noreferrer"
+              class="text-base font-semibold text-zinc-100 hover:text-indigo-300 transition-colors">
+              California College of Art
+            </a>
+            <span class="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-medium">Current</span>
           </div>
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">Synthemo - Fluxion</h3>
-            <p class="text-zinc-300 mb-4">A node-based image generation platform built with Next.js, Supabase, and Replicate. Empowers visual creators to generate AI art through a modular UI.</p>
-            
-            <div class="flex flex-wrap gap-2 mb-4">
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Next.js</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Supabase</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">React</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Replicate API</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Diffusion Models</span>
-            </div>
-            
-            <div class="flex justify-start">
-              <a 
-                href="https://app.synthemo.com" 
-                target="_blank" 
-                class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
-              >
-                Visit Project
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </div>
-          </div>
+          <p class="text-sm text-zinc-500 mb-3">Adjunct Faculty, MFA Design &nbsp;·&nbsp; 2015–Present</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Teach Motion Studio and MFA exhibition courses.</li>
+            <li>Developed curriculum in generative AI for design and motion.</li>
+          </ul>
         </div>
-        
-        <!-- Project Card: Elysium System -->
-        <div 
+
+        <!-- XYZ Studios -->
+        <div
           v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="relative h-52">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1697726328/Elysium2084WebApp/Elysium_5_rprhj6.jpg" alt="Elysium 2084" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-indigo-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
-              AI Narrative Game
-            </div>
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 160, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-10">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-indigo-400"></div>
+          <div class="flex flex-wrap items-center gap-3 mb-1">
+            <a href="https://wearexyz.com" target="_blank" rel="noopener noreferrer"
+              class="text-base font-semibold text-zinc-100 hover:text-indigo-300 transition-colors">
+              XYZ Studios
+            </a>
+            <span class="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-medium">Current</span>
           </div>
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">Elysium System</h3>
-            <p class="text-zinc-300 mb-4">An AI-driven narrative game that merges interactive fiction with avatar-based worldbuilding in a cyberpunk universe with branching storylines.</p>
-            
-            <div class="flex flex-wrap gap-2 mb-4">
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Python/FastAPI</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">OpenAI API</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">MongoDB</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Pinecone</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">LangChain</span>
-            </div>
-            
-            <div class="flex justify-start">
-              <a 
-                href="https://elysium2084.wl.r.appspot.com/" 
-                target="_blank" 
-                class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
-              >
-                Visit Project
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </div>
-          </div>
+          <p class="text-sm text-zinc-500 mb-3">Lighting Designer &nbsp;·&nbsp; 2015–Present</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Design and produce high-end marketing imagery for Apple and Google.</li>
+            <li>Tools: Maya, Nuke, Photoshop.</li>
+          </ul>
         </div>
-        
-        <!-- Project Card: Hopeflo -->
-        <div 
+
+        <!-- Logitech -->
+        <div
           v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="relative h-52">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176761/Hopeflo/Hopeflo_1_ztwwy4.jpg" alt="Hopeflo" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-green-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
-              Civic Tech
-            </div>
-          </div>
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">Hopeflo</h3>
-            <p class="text-zinc-300 mb-4">A civic-focused platform that combines positive news aggregation with tools for community-driven action, fostering engagement in local initiatives.</p>
-            
-            <div class="flex flex-wrap gap-2 mb-4">
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Next.js</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Supabase</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">MCP</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Tailwind CSS</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Agentic AI</span>
-            </div>
-            
-            <div class="flex justify-start">
-              <a 
-                href="https://hopeflo.org" 
-                target="_blank" 
-                class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
-              >
-                Visit Project
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </div>
-          </div>
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 240, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-10">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-zinc-600"></div>
+          <p class="text-base font-semibold text-zinc-100 mb-1">Logitech</p>
+          <p class="text-sm text-zinc-500 mb-3">Staff Lead Visual Designer &nbsp;·&nbsp; 2019–2023</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Led visual design across 10+ product launches for the Mobility team, coordinating deliverables across engineering, industrial design, and product management.</li>
+            <li>3D rendering and 2D design visualization across the Mobility product line.</li>
+            <li>Created photorealistic imagery for Logitech website, in-store POS, packaging, and partner sites.</li>
+            <li>Performed CAD data conversion into DCC-renderable assets.</li>
+          </ul>
         </div>
-        
-        <!-- Project Card: NovelSpace -->
-        <div 
+
+        <!-- Schawk -->
+        <div
           v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :enter="{ opacity: 1, y: 0, transition: { delay: 1600, duration: 600 } }"
-          class="motion-initial bg-zinc-800/50 rounded-xl overflow-hidden shadow-xl border border-zinc-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-blue-900/10 hover:shadow-xl"
-        >
-          <div class="relative h-52">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1702515925/LandingPage-Images/Elysium-SDXL_img2img_00002_yw0y6f.png" alt="NovelSpace" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-purple-600/90 py-1 px-3 text-xs font-medium text-white rounded-bl-lg">
-              Creative Platform
-            </div>
-          </div>
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-white">NovelSpace.tech</h3>
-            <p class="text-zinc-300 mb-4">Novelspace is a creative launchpad for AI-enhanced story-worlds and experimental digital media. Novelspace supports experimental formats that fuse code, story, and visual design into living, evolving worlds.</p>
-            
-            <div class="flex flex-wrap gap-2 mb-4">
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Next.js</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Tailwind CSS</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Cloudinary</span>
-              <span class="text-xs bg-blue-500/20 text-blue-300 py-1 px-2 rounded-full">Image Generation</span>
-            </div>
-            
-            <div class="flex justify-start">
-              <a 
-                href="https://novelspace-website-novel-space-team.vercel.app/" 
-                target="_blank" 
-                class="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm"
-              >
-                Visit Project
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </div>
-          </div>
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 320, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-10">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-zinc-600"></div>
+          <p class="text-base font-semibold text-zinc-100 mb-1">Schawk</p>
+          <p class="text-sm text-zinc-500 mb-3">Staff 3D Technical Director &nbsp;·&nbsp; 2017–2018</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Digital asset production for Apple product refresh and launch events.</li>
+            <li>High-resolution, photorealistic imagery for product launches and in-store POS.</li>
+          </ul>
+        </div>
+
+        <!-- Nvidia -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, x: -16 }"
+          :visibleOnce="{ opacity: 1, x: 0, transition: { delay: 400, duration: 600 } }"
+          class="motion-initial relative pl-8 pb-4">
+          <div class="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-zinc-600"></div>
+          <p class="text-base font-semibold text-zinc-100 mb-1">Nvidia</p>
+          <p class="text-sm text-zinc-500 mb-3">Staff 3D Technical Director &nbsp;·&nbsp; 2014–2017</p>
+          <ul class="space-y-1.5 text-sm text-zinc-400">
+            <li>Researched and developed offline and real-time GPU rendering pipelines.</li>
+            <li>Performed product testing for Nvidia's in-house progressive and programmable renderer.</li>
+            <li>Created workflows for CAD data conversion into DCC-renderable assets.</li>
+          </ul>
         </div>
       </div>
-    </div>
+
+      <!-- Education -->
+      <div
+        v-motion
+        :initial="{ opacity: 0, y: 16 }"
+        :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }"
+        class="motion-initial mt-10 border border-zinc-800 rounded-lg p-5">
+        <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Education</h3>
+        <p class="text-base font-medium text-zinc-100">MFA in Design Technology</p>
+        <p class="text-sm text-zinc-500 mt-1">San Francisco Art Institute &nbsp;·&nbsp; Interactive design, digital fabrication, and immersive technologies</p>
+      </div>
+    </section>
+
+    <!-- ── Featured Projects ────────────────────────────────── -->
+    <section class="mb-16">
+      <h2
+        v-motion
+        :initial="{ opacity: 0, y: 16 }"
+        :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }"
+        class="motion-initial text-xl font-semibold text-zinc-100 mb-10">
+        Featured Projects
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Synthemo Creative -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { delay: 0, duration: 600 } }"
+          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
+          <div class="h-48 overflow-hidden">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526868/SynthemoLP/SynthemoCreative-LP-2026jpg_h7iewl.jpg"
+              alt="Synthemo Creative" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-base font-semibold text-zinc-100">Synthemo Creative</h3>
+              <span class="text-xs text-zinc-600 shrink-0 ml-2 mt-0.5">Brand Film / GenAI</span>
+            </div>
+            <p class="text-sm text-zinc-500 mb-2 leading-relaxed">
+              <span class="text-zinc-400 font-medium">What:</span> Creative studio producing cinematic brand content with generative AI pipelines.
+            </p>
+            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
+              <span class="text-zinc-400 font-medium">Why:</span> Brands need premium motion content at the speed and flexibility only AI workflows can deliver.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Flux</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Veo</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">ComfyUI</span>
+            </div>
+            <a href="https://synthemo.com" target="_blank" rel="noopener noreferrer"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+              Visit synthemo.com
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Fluxion -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { delay: 80, duration: 600 } }"
+          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
+          <div class="h-48 overflow-hidden">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176223/SynthemoLP/Fluxion-April2025_ovrimh.png"
+              alt="Fluxion" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-base font-semibold text-zinc-100">Fluxion</h3>
+              <span class="text-xs text-zinc-600 shrink-0 ml-2 mt-0.5">AI Tool</span>
+            </div>
+            <p class="text-sm text-zinc-500 mb-2 leading-relaxed">
+              <span class="text-zinc-400 font-medium">What:</span> Node-based image generation platform giving artists direct control over diffusion workflows.
+            </p>
+            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
+              <span class="text-zinc-400 font-medium">Why:</span> Existing diffusion tools hid the pipeline — Fluxion exposes it as a modular, artist-friendly node graph.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Next.js</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Supabase</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Replicate</span>
+            </div>
+            <a href="https://app.synthemo.com" target="_blank" rel="noopener noreferrer"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+              Visit project
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Elysium System -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { delay: 160, duration: 600 } }"
+          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
+          <div class="h-48 overflow-hidden">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1697726328/Elysium2084WebApp/Elysium_5_rprhj6.jpg"
+              alt="Elysium System" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-base font-semibold text-zinc-100">Elysium System</h3>
+              <span class="text-xs text-zinc-600 shrink-0 ml-2 mt-0.5">AI Game Engine</span>
+            </div>
+            <p class="text-sm text-zinc-500 mb-2 leading-relaxed">
+              <span class="text-zinc-400 font-medium">What:</span> AI-driven narrative game with LLM-powered story generation and avatar-based worldbuilding.
+            </p>
+            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
+              <span class="text-zinc-400 font-medium">Why:</span> Exploring how LLMs can generate coherent, branching narrative arcs with persistent character memory.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Python / FastAPI</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">OpenAI</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">LangChain</span>
+            </div>
+            <a href="https://elysium2084.wl.r.appspot.com/" target="_blank" rel="noopener noreferrer"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+              Visit project
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Hopeflo -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { delay: 240, duration: 600 } }"
+          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
+          <div class="h-48 overflow-hidden">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176761/Hopeflo/Hopeflo_1_ztwwy4.jpg"
+              alt="Hopeflo" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-base font-semibold text-zinc-100">Hopeflo</h3>
+              <span class="text-xs text-zinc-600 shrink-0 ml-2 mt-0.5">Civic Tech</span>
+            </div>
+            <p class="text-sm text-zinc-500 mb-2 leading-relaxed">
+              <span class="text-zinc-400 font-medium">What:</span> Civic platform combining AI-curated positive news with tools for community-driven action.
+            </p>
+            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
+              <span class="text-zinc-400 font-medium">Why:</span> Countering doom-scroll fatigue by surfacing hopeful narratives and local opportunities to engage.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Next.js</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Supabase</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Agentic AI</span>
+            </div>
+            <a href="https://hopeflo.org" target="_blank" rel="noopener noreferrer"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+              Visit hopeflo.org
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- NovelSpace -->
+        <div
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { delay: 320, duration: 600 } }"
+          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300 md:col-span-2 lg:col-span-1">
+          <div class="h-48 overflow-hidden">
+            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1702515925/LandingPage-Images/Elysium-SDXL_img2img_00002_yw0y6f.png"
+              alt="NovelSpace" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-base font-semibold text-zinc-100">NovelSpace.tech</h3>
+              <span class="text-xs text-zinc-600 shrink-0 ml-2 mt-0.5">Creative Platform</span>
+            </div>
+            <p class="text-sm text-zinc-500 mb-2 leading-relaxed">
+              <span class="text-zinc-400 font-medium">What:</span> Creative platform for AI-enhanced story-worlds and experimental digital media.
+            </p>
+            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
+              <span class="text-zinc-400 font-medium">Why:</span> Exploring new formats that fuse code, story, and visual design into living, evolving worlds.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Next.js</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Cloudinary</span>
+              <span class="text-xs text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded">Image Generation</span>
+            </div>
+            <a href="https://novelspace-website-novel-space-team.vercel.app/" target="_blank" rel="noopener noreferrer"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+              Visit project
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
   </div>
-</template> 
+</template>

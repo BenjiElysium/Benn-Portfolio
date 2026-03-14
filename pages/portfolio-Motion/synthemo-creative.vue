@@ -1,32 +1,51 @@
 <script setup>
 import YouTubeEmbed from '~/components/YouTubeEmbed.vue';
 
+useSeoMeta({
+  title: 'Synthemo Creative — Philip Benn',
+  description: 'Synthemo Creative: Brand Spec films and generative AI motion design studio. Cinematic prototypes, craft process studies, and visual systems by Philip Benn.',
+  ogTitle: 'Synthemo Creative — Brand Spec + GenAI Lab',
+  ogDescription: 'Cinematic brand film studio built on frontier generative AI pipelines. By Philip Benn.',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+});
+
 // All 5 Brand Spec videos from Synthemo Creative YouTube playlist
 const brandSpecVideos = [
-  { 
-    id: 'z0e1Sf_8_vw', 
-    title: 'Brand Spec 01',
-    description: 'Cinematic prototype exploring brand identity through generative AI motion design.'
+  {
+    id: 'z0e1Sf_8_vw',
+    title: 'Calm',
+    label: 'Brand Spec Spot (Unofficial)',
+    disclaimer: 'Not affiliated with or endorsed by Calm.',
+    description: 'A commercial prototype exploring breath, UI intimacy, and soft transitions — built in an AI-first workflow (direction, edit, motion, sound, pacing).'
   },
-  { 
-    id: 'pXRkS8Us2GA', 
-    title: 'Brand Spec 02',
-    description: 'Visual system study combining traditional craft aesthetics with AI-driven animation.'
+  {
+    id: 'pXRkS8Us2GA',
+    title: 'Arjé',
+    label: 'Brand Spec Spot (Unofficial)',
+    disclaimer: 'Not affiliated with or endorsed by Arjé.',
+    description: 'A commercial prototype exploring artisan process, tactility, and restraint — built in an AI-first workflow (direction, edit, motion, sound, pacing).'
   },
-  { 
-    id: 'V5zsNyGktUA', 
-    title: 'Brand Spec 03',
-    description: 'Process study demonstrating modern GenAI workflow integration.'
+  {
+    id: 'V5zsNyGktUA',
+    title: 'Le Labo',
+    label: 'Brand Spec Spot (Unofficial)',
+    disclaimer: 'Not affiliated with or endorsed by Le Labo.',
+    description: 'A commercial prototype exploring material truth, ritual, and stillness — built in an AI-first workflow (direction, edit, motion, sound, pacing).'
   },
-  { 
-    id: 'd4D5FY7ddgo', 
-    title: 'Brand Spec 04',
-    description: 'Experimental brand animation pushing the boundaries of AI-assisted motion design.'
+  {
+    id: 'd4D5FY7ddgo',
+    title: "Arc'teryx",
+    label: 'Brand Spec Spot (Unofficial)',
+    disclaimer: "Not affiliated with or endorsed by Arc'teryx.",
+    description: 'A short commercial prototype exploring terrain + precision + restraint — built in an AI-first workflow (direction, edit, motion, sound, pacing).'
   },
-  { 
-    id: 'iySqpWrkkiM', 
-    title: 'Brand Spec 05',
-    description: 'Latest exploration in the Brand Spec series featuring advanced visual systems.'
+  {
+    id: 'iySqpWrkkiM',
+    title: 'Rivian',
+    label: 'Brand Spec Spot (Unofficial)',
+    disclaimer: 'Not affiliated with or endorsed by Rivian.',
+    description: 'A cinematic commercial prototype exploring quiet power, landscape, and pace — built in an AI-first workflow (direction, edit, motion, sound, pacing).'
   },
 ];
 </script>
@@ -62,10 +81,10 @@ const brandSpecVideos = [
       
       <!-- Logo / Brand Mark -->
       <div class="mb-6">
-        <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 text-transparent bg-clip-text">
-          SYNTHEMO
+        <h1 class="text-5xl md:text-6xl font-medium leading-tight text-gradient">
+          Synthemo
         </h1>
-        <p class="text-2xl text-zinc-300 tracking-widest mt-2">CREATIVE</p>
+        <p class="text-2xl md:text-3xl text-zinc-500 tracking-widest font-light mt-2">Creative</p>
       </div>
       
       <!-- Tagline -->
@@ -135,11 +154,11 @@ const brandSpecVideos = [
 
     <!-- Brand Spec Videos Section -->
     <section>
-      <h2 
+      <h2
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0, transition: { delay: 800, duration: 600 } }"
-        class="motion-initial text-2xl font-bold text-purple-300 mb-8">
+        class="motion-initial text-2xl font-bold text-zinc-100 mb-8">
         Brand Spec Collection
       </h2>
       
@@ -162,8 +181,10 @@ const brandSpecVideos = [
           
           <!-- Video Info -->
           <div class="bg-zinc-800/30 border border-zinc-700/50 rounded-xl p-6">
-            <h3 class="text-xl font-bold text-white mb-3">{{ video.title }}</h3>
-            <p class="text-zinc-400 leading-relaxed mb-4">{{ video.description }}</p>
+            <h3 class="text-xl font-semibold text-white mb-1">{{ video.title }}</h3>
+            <p class="text-xs font-medium text-indigo-400 uppercase tracking-wider mb-3">{{ video.label }}</p>
+            <p class="text-xs text-zinc-500 mb-4 leading-relaxed">{{ video.disclaimer }}</p>
+            <p class="text-zinc-400 text-sm leading-relaxed mb-5">{{ video.description }}</p>
             <div class="flex flex-wrap gap-2">
               <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">GenAI</span>
               <span class="text-xs bg-purple-500/20 text-purple-300 py-1 px-2 rounded-full">Motion Design</span>
@@ -181,7 +202,7 @@ const brandSpecVideos = [
       :enter="{ opacity: 1, y: 0, transition: { delay: 1500, duration: 700 } }"
       class="motion-initial mt-20 text-center">
       
-      <div class="bg-gradient-to-br from-purple-900/30 via-zinc-800/50 to-blue-900/30 border border-zinc-700/50 rounded-2xl p-10">
+      <div class="border border-zinc-800 rounded-2xl p-10">
         <h2 class="text-2xl font-bold text-white mb-4">Interested in Collaboration?</h2>
         <p class="text-zinc-300 mb-6 max-w-xl mx-auto">
           Open for collabs, creative direction, and commissions. 
@@ -189,7 +210,7 @@ const brandSpecVideos = [
         </p>
         <a 
           href="mailto:philipaldenbenn@gmail.com"
-          class="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 text-sm font-semibold rounded-md hover:bg-zinc-100 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>

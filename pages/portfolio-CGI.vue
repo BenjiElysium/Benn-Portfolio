@@ -1,6 +1,15 @@
 <script setup>
 import CloudinaryMasonryGallery from '~/components/CloudinaryMasonryGallery.vue';
 
+useSeoMeta({
+  title: 'CGI & 3D Portfolio — Philip Benn',
+  description: 'Professional product visualization, CGI environments, and 3D renderings. Created with Cinema4D, Maya, Nuke, and Photoshop for clients including Logitech, Apple, and Google.',
+  ogTitle: 'CGI & 3D Portfolio — Philip Benn',
+  ogDescription: 'Product visualization and 3D renderings by Philip Benn. Clients include Logitech, Apple, and Google.',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+});
+
 const mediaAssets = [
   { tag: "philipbenn-render", mediaType: "image" },
   { tag: "logi-animation", mediaType: "video" },
@@ -21,10 +30,8 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0, y: 20 }"
       :enter="{ opacity: 1, y: 0, transition: { delay: 200, duration: 800 } }"
-      class="motion-initial text-4xl font-bold mb-6 text-center">
-      <span class="bg-gradient-to-r from-purple-500 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
-        Product & Environment Renders
-      </span>
+      class="motion-initial text-4xl sm:text-5xl font-medium leading-tight mb-4 text-gradient text-center">
+      Product &amp; Environment Renders
     </h1>
     <p 
       v-motion
