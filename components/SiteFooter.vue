@@ -33,7 +33,7 @@ const links = [
     :initial="{ opacity: 0, y: 20 }"
     :enter="{ opacity: 1, y: 0, transition: { delay: 600, duration: 800 } }">
     <section class="max-w-7xl mx-auto px-4 flex justify-between items-center text-gray-300">
-      <p class="text-xs md:text-sm">&copy; Philip Benn 2024. All Rights Reserved</p>
+      <p class="text-xs md:text-sm">&copy; Philip Benn 2026. All Rights Reserved</p>
       <div class="flex gap-4">
         <a 
           v-for="(link, index) in links" 

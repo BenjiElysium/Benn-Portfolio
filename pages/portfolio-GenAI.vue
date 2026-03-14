@@ -1,6 +1,15 @@
 <script setup>
 import CloudinaryMasonryGallery from '~/components/CloudinaryMasonryGallery.vue';
 
+useSeoMeta({
+  title: 'Generative AI Portfolio — Philip Benn',
+  description: 'AI-generated images created with diffusion models including Flux, Midjourney, and ComfyUI. Portfolio by Philip Benn.',
+  ogTitle: 'Generative AI Portfolio — Philip Benn',
+  ogDescription: 'AI-generated images created with diffusion models. Portfolio by Philip Benn.',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+});
+
 const mediaAssets = [
   { tag: "image-diffusion-PB", mediaType: "image" },
   { folder: "Fluxion", mediaType: "image" },
@@ -23,10 +32,8 @@ const handleImageClick = (image) => {
       v-motion
       :initial="{ opacity: 0, y: 20}"
       :enter="{ opacity: 1, y: 0, transition: { delay: 400, duration: 800 } }"
-      class="motion-initial text-4xl font-bold mb-6 text-center">
-      <span class="bg-gradient-to-r from-purple-500 via-blue-600 to-blue-400 text-transparent bg-clip-text inline-block">
-        Generative AI - Image Diffusion
-      </span>
+      class="motion-initial text-4xl sm:text-5xl font-medium leading-tight mb-4 text-gradient text-center">
+      Generative AI — Image Diffusion
     </h1>
     <p 
       v-motion
