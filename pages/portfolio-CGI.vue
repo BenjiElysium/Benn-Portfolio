@@ -50,6 +50,7 @@ const handleImageClick = (image) => {
         :column-width="320"
         :gap="16"
         :max-width="2400"
+        sort-by="newest"
         @image-click="handleImageClick"
       />
     </div>

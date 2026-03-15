@@ -18,6 +18,11 @@ const props = defineProps({
   maxWidth: {
     type: Number,
     default: 1600
+  },
+  sortBy: {
+    type: String,
+    default: 'random',
+    validator: (v) => ['random', 'newest', 'oldest', 'name'].includes(v)
   }
 });
 
@@ -79,6 +84,7 @@ const loadAllImages = async () => {
           publicId: img.public_id,
           format: img.format,
           version: img.version,
+          createdAt: img.created_at,
           url: `https://res.cloudinary.com/doj03xgr2/image/upload/c_scale,w_800/${img.public_id}.${img.format}`,
           originalUrl: `https://res.cloudinary.com/doj03xgr2/image/upload/${img.public_id}.${img.format}`,
           width: img.width,
@@ -92,19 +98,37 @@ const loadAllImages = async () => {
     }
   }
   
-  // Randomize the images for a better masonry layout
-  items.value = shuffleArray([...items.value]);
+  items.value = sortItems([...items.value]);
   
   loading.value = false;
 };
 
-// Fisher-Yates shuffle algorithm to randomize array
-const shuffleArray = (array) => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+const sortItems = (array) => {
+  switch (props.sortBy) {
+    case 'newest':
+      return array.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    case 'oldest':
+      return array.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      });
+    case 'name':
+      return array.sort((a, b) => {
+        const nameA = a.publicId.split('/').pop().toLowerCase();
+        const nameB = b.publicId.split('/').pop().toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    case 'random':
+    default:
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
   }
-  return array;
 };
 
 // Handle image click to open modal

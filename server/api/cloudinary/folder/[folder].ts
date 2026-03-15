@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
       publicId: img.public_id,
       format: img.format,
       version: img.version,
+      createdAt: img.created_at,
       url: `https://res.cloudinary.com/${cloudName}/image/upload/c_scale,w_800/${img.public_id}.${img.format}`,
       originalUrl: `https://res.cloudinary.com/${cloudName}/image/upload/${img.public_id}.${img.format}`,
       width: img.width,
