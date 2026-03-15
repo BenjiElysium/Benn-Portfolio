@@ -32,11 +32,15 @@ const sections = [
     assets: [{ folder: 'Brand-Spec-Rivian', mediaType: 'image' }],
   },  
   {
-    title: 'Fluxion App Images created with Flux, Photon and OpenAI models, 2024-2025',
+    title: 'Images created with Midjourney, 2025-2026',
+    assets: [{ folder: 'Midjourney-2025', mediaType: 'image' }],
+  },  
+  {
+    title: 'Fluxion Web App: Images created with Flux, Photon and OpenAI models, 2024',
     assets: [{ folder: 'Fluxion', mediaType: 'image' }],
   },
   {
-    title: 'Created with SDXL model, 2024',
+    title: 'Created with SDXL model, 2023',
     assets: [{ folder: 'Portal2', mediaType: 'image' }],
   },
   {
