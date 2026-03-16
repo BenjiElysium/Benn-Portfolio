@@ -90,7 +90,7 @@ const vpParallax = (el, factor, max = 28) => {
 // Headshot: simple scroll offset (starts above fold, very subtle trail)
 const headshotParallax = computed(() => {
   if (prefersReducedMotion) return {};
-  return { transform: `translateY(${(scrollY.value * 0.06).toFixed(1)}px)` };
+  return { transform: `translateY(${(scrollY.value * 0.02).toFixed(1)}px)` };
 });
 
 // Credibility bar only — vertical parallax (the float effect)
@@ -183,8 +183,8 @@ const cardVisible = (delay = 0) => ({
       <div :style="credibilityParallax">
         <section
           v-motion
-          :initial="{ opacity: 0, y: 16 }"
-          :visible="{ opacity: 1, y: 0, transition: { duration: 700 } }"
+          :initial="{ opacity: 0, y: 16, filter: 'blur(6px)' }"
+          :visible="{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 700 } }"
           class="motion-initial bg-zinc-900/10 border-t border-b border-zinc-700/50 py-8
                  shadow-[0_16px_60px_rgba(0,0,0,0.85),0_-8px_40px_rgba(0,0,0,0.5)]">
           <p class="text-xs text-zinc-600 uppercase tracking-widest mb-4 text-center">Work delivered for</p>
@@ -347,8 +347,8 @@ const cardVisible = (delay = 0) => ({
     <!-- ── Synthemo video showcase ───────────────────────────── -->
     <section
       v-motion
-      :initial="{ opacity: 0, y: 36 }"
-      :visible="{ opacity: 1, y: 0, transition: { duration: 750, ease: 'easeOut' } }"
+      :initial="{ opacity: 0, y: 36, filter: 'blur(10px)' }"
+      :visible="{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 750, ease: 'easeOut' } }"
       class="motion-initial mb-24">
       <div class="flex justify-between items-end mb-8">
         <div>
