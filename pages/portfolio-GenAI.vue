@@ -12,23 +12,23 @@ useSeoMeta({
 
 const sections = [
 {
-    title: 'Brand Spec Spot for Le Labo (Unofficial). Created with NanoBanana Pro, 2026',
+    title: 'Brand Spec Spot for Le Labo. Created with NanoBanana Pro, 2026',
     assets: [{ folder: 'Brand-Spec-LeLabo', mediaType: 'image' }],
   },
   {
-    title: 'Brand Spec Spot for Calm (Unofficial). Created with NanoBanana Pro, 2026',
+    title: 'Brand Spec Spot for Calm. Created with NanoBanana Pro, 2026',
     assets: [{ folder: 'Brand-Spec-Calm', mediaType: 'image' }],
   },
   {
-    title: 'Brand Spec Spot for Arjé (Unofficial). Created with NanoBanana Pro, 2026',
+    title: 'Brand Spec Spot for Arjé. Created with NanoBanana Pro, 2026',
     assets: [{ folder: 'Brand-Spec-Arje', mediaType: 'image' }],
   },
   {
-    title: 'Brand Spec Spot for Arc\'teryx (Unofficial). Created with NanoBanana Pro, 2026',
+    title: 'Brand Spec Spot for Arc\'teryx. Created with NanoBanana Pro, 2026',
     assets: [{ folder: 'Brand-Spec-Arcteryx', mediaType: 'image' }],
   },
   {
-    title: 'Brand Spec Spot for Rivian (Unofficial). Created with Midjourney and NanoBanana Pro, 2026',
+    title: 'Brand Spec Spot for Rivian. Created with Midjourney and NanoBanana Pro, 2026',
     assets: [{ folder: 'Brand-Spec-Rivian', mediaType: 'image' }],
   },  
   {
@@ -36,15 +36,15 @@ const sections = [
     assets: [{ folder: 'Midjourney-2025', mediaType: 'image' }],
   },  
   {
-    title: 'Fluxion Web App: Images created with Flux, Photon and OpenAI models, 2024',
+    title: 'Fluxion Web App: Images created with Flux, Photon and OpenAI models, 2024-2025',
     assets: [{ folder: 'Fluxion', mediaType: 'image' }],
   },
   {
-    title: 'Created with SDXL model, 2023',
+    title: 'Images created with SDXL model, 2023',
     assets: [{ folder: 'Portal2', mediaType: 'image' }],
   },
   {
-    title: 'Created with Elysium App with the Flux Schnell model, 2023-2024',
+    title: 'Images created with Elysium System App with the Flux Schnell model, 2023-2024',
     assets: [{ folder: 'ElysiumSystem-LP', mediaType: 'image' }],
   },
 ];
