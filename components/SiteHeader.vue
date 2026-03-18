@@ -6,16 +6,44 @@ import { useRoute } from 'vue-router';
 
 const route = useRoute();
 
-// ── Scroll-hide behaviour ──────────────────────────────────────
+// ── Scroll-hide + inactivity-hide behaviour ────────────────────
 const isNavbarVisible = ref(true);
 let lastScroll = 0;
+let inactivityTimer = null;
+
+function showNavbar() {
+  isNavbarVisible.value = true;
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    isNavbarVisible.value = false;
+  }, 3000);
+}
+
 const handleScroll = () => {
   const cur = window.scrollY;
-  isNavbarVisible.value = cur <= lastScroll || cur <= 0;
+  // scroll-direction logic (keeps existing page behaviour)
+  if (cur <= lastScroll || cur <= 0) {
+    showNavbar();
+  } else {
+    isNavbarVisible.value = false;
+    clearTimeout(inactivityTimer);
+  }
   lastScroll = cur;
 };
-onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }));
-onUnmounted(() => window.removeEventListener('scroll', handleScroll));
+
+const handleMouseMove = () => showNavbar();
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  window.addEventListener('mousemove', handleMouseMove, { passive: true });
+  // Start the initial inactivity timer
+  inactivityTimer = setTimeout(() => { isNavbarVisible.value = false; }, 3000);
+});
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('mousemove', handleMouseMove);
+  clearTimeout(inactivityTimer);
+});
 
 // ── Nav links ─────────────────────────────────────────────────
 const portfolioLinks = [
@@ -193,6 +221,16 @@ const delayClose    = () => { closeTimer = setTimeout(() => { isDropdownOpen.val
             ]">
             Contact
           </NuxtLink>
+
+          <!-- Apps -->
+          <NuxtLink
+            to="/apps"
+            :class="[
+              route.path.startsWith('/apps') ? 'text-white active' : 'text-zinc-400 hover:text-zinc-100',
+              'nav-link px-3 py-2 text-sm font-medium transition-colors rounded-md'
+            ]">
+            Apps
+          </NuxtLink>
         </div>
 
         <!-- Mobile hamburger -->
@@ -243,6 +281,12 @@ const delayClose    = () => { closeTimer = setTimeout(() => { isDropdownOpen.val
           :class="[route.path === '/contact' ? 'text-white bg-zinc-800/50' : 'text-zinc-400',
             'block px-3 py-2 rounded-md text-base font-medium hover:bg-zinc-800 hover:text-white transition-colors']">
           Contact
+        </DisclosureButton>
+
+        <DisclosureButton as="a" href="/apps"
+          :class="[route.path.startsWith('/apps') ? 'text-white bg-zinc-800/50' : 'text-zinc-400',
+            'block px-3 py-2 rounded-md text-base font-medium hover:bg-zinc-800 hover:text-white transition-colors']">
+          Apps
         </DisclosureButton>
       </div>
     </DisclosurePanel>
