@@ -212,16 +212,6 @@ const delayClose    = () => { closeTimer = setTimeout(() => { isDropdownOpen.val
             </Transition>
           </div>
 
-          <!-- Contact -->
-          <NuxtLink
-            to="/contact"
-            :class="[
-              route.path === '/contact' ? 'text-white active' : 'text-zinc-400 hover:text-zinc-100',
-              'nav-link px-3 py-2 text-sm font-medium transition-colors rounded-md'
-            ]">
-            Contact
-          </NuxtLink>
-
           <!-- Apps -->
           <NuxtLink
             to="/apps"
@@ -230,6 +220,16 @@ const delayClose    = () => { closeTimer = setTimeout(() => { isDropdownOpen.val
               'nav-link px-3 py-2 text-sm font-medium transition-colors rounded-md'
             ]">
             Apps
+          </NuxtLink>
+
+          <!-- Contact -->
+          <NuxtLink
+            to="/contact"
+            :class="[
+              route.path === '/contact' ? 'text-white active' : 'text-zinc-400 hover:text-zinc-100',
+              'nav-link px-3 py-2 text-sm font-medium transition-colors rounded-md'
+            ]">
+            Contact
           </NuxtLink>
         </div>
 
@@ -277,16 +277,16 @@ const delayClose    = () => { closeTimer = setTimeout(() => { isDropdownOpen.val
           </DisclosureButton>
         </div>
 
-        <DisclosureButton as="a" href="/contact"
-          :class="[route.path === '/contact' ? 'text-white bg-zinc-800/50' : 'text-zinc-400',
-            'block px-3 py-2 rounded-md text-base font-medium hover:bg-zinc-800 hover:text-white transition-colors']">
-          Contact
-        </DisclosureButton>
-
         <DisclosureButton as="a" href="/apps"
           :class="[route.path.startsWith('/apps') ? 'text-white bg-zinc-800/50' : 'text-zinc-400',
             'block px-3 py-2 rounded-md text-base font-medium hover:bg-zinc-800 hover:text-white transition-colors']">
           Apps
+        </DisclosureButton>
+
+        <DisclosureButton as="a" href="/contact"
+          :class="[route.path === '/contact' ? 'text-white bg-zinc-800/50' : 'text-zinc-400',
+            'block px-3 py-2 rounded-md text-base font-medium hover:bg-zinc-800 hover:text-white transition-colors']">
+          Contact
         </DisclosureButton>
       </div>
     </DisclosurePanel>
