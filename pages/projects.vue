@@ -179,14 +179,14 @@
       </div>
     </section>
 
-    <!-- ── Featured Projects ────────────────────────────────── -->
+    <!-- ── Featured Web Development Projects ────────────────────────────────── -->
     <section class="mb-16">
       <h2
         v-motion
         :initial="{ opacity: 0, y: 16 }"
         :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }"
         class="motion-initial text-xl font-semibold text-zinc-100 mb-10">
-        Featured Projects
+        Featured Web Development Projects
       </h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
