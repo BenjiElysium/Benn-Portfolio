@@ -1,6 +1,21 @@
 <script setup>
 import YouTubeEmbed from '~/components/YouTubeEmbed.vue';
 
+const cgiAssets = [
+  { tag: 'philipbenn-render', mediaType: 'image' },
+];
+
+const genAiAssets = [
+  { folder: 'Brand-Spec-LeLabo', mediaType: 'image' },
+  { folder: 'Brand-Spec-Calm', mediaType: 'image' },
+  { folder: 'Midjourney-2025', mediaType: 'image' },
+  { folder: 'Fluxion', mediaType: 'image' },
+];
+
+// Sort options for LP scrolls: 'random' | 'newest' | 'oldest' | 'name'
+const lpCgiSortBy = 'newest';
+const lpGenAiSortBy = 'newest';
+
 useSeoMeta({
   title: 'Philip Benn — Creative Technologist & Generative AI Developer',
   description: 'Creative Technologist with a decade of experience in 3D production, generative AI workflows, and full-stack development. Clients include Logitech, Nvidia, Apple, and Google.',
@@ -229,120 +244,25 @@ const cardVisible = (delay = 0) => ({
       </div>
     </section>
 
-    <!-- ── Featured Projects ─────────────────────────────────── -->
-    <section class="mb-24">
-      <div class="flex justify-between items-center mb-10">
-        <h2
-          v-motion
-          :initial="{ opacity: 0, y: 28, filter: 'blur(6px)' }"
-          :visible="{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 700, ease: 'easeOut' } }"
-          class="motion-initial text-2xl font-semibold text-zinc-100">
-          Featured Projects
-        </h2>
-        <NuxtLink
-          to="/projects"
-          class="text-sm text-zinc-500 hover:text-zinc-200 transition-colors flex items-center gap-1">
-          View all
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>
-        </NuxtLink>
-      </div>
+    <!-- ── Portfolio CGI ─────────────────────────────────────── -->
+    <PortfolioImageScroll
+      :media-assets="cgiAssets"
+      :sort-by="lpCgiSortBy"
+      title="Client CGI &amp; Product Renders"
+      link-href="/portfolio-CGI"
+      link-label="View portfolio"
+      :max-images="14"
+    />
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        <!-- Synthemo Creative -->
-        <div
-          v-motion
-          :initial="cardInitial(0, 52)"
-          :visible="cardVisible(0)"
-          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
-          <div class="h-44 overflow-hidden">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1771526869/SynthemoLP/SynthemoCreative-FramerLayout_z2vvy5.jpg"
-              alt="Synthemo Creative" class="w-full h-full object-cover" />
-          </div>
-          <div class="p-5">
-            <div class="flex items-start justify-between mb-2">
-              <h3 class="text-base font-semibold text-zinc-100">Synthemo Creative</h3>
-              <span class="text-xs text-zinc-600 ml-2 mt-0.5 shrink-0">Brand Film / GenAI</span>
-            </div>
-            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
-              Creative studio producing cinematic brand films with generative AI pipelines. Rapid prototyping, premium motion delivery.
-            </p>
-            <NuxtLink to="/portfolio-Motion/synthemo-creative"
-              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-              View collection
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </NuxtLink>
-          </div>
-        </div>
-
-        <!-- Fluxion -->
-        <div
-          v-motion
-          :initial="cardInitial(1, 52)"
-          :visible="cardVisible(100)"
-          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
-          <div class="h-44 overflow-hidden">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1745176223/SynthemoLP/Fluxion-April2025_ovrimh.png"
-              alt="Fluxion" class="w-full h-full object-cover" />
-          </div>
-          <div class="p-5">
-            <div class="flex items-start justify-between mb-2">
-              <h3 class="text-base font-semibold text-zinc-100">Fluxion</h3>
-              <span class="text-xs text-zinc-600 ml-2 mt-0.5 shrink-0">AI Tool</span>
-            </div>
-            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
-              Node-based image generation platform giving artists direct control over diffusion workflows. Built on Next.js, Supabase, and Replicate.
-            </p>
-            <a href="https://app.synthemo.com" target="_blank" rel="noopener noreferrer"
-              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-              Visit project
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-
-        <!-- Elysium System -->
-        <div
-          v-motion
-          :initial="cardInitial(2, 52)"
-          :visible="cardVisible(200)"
-          class="motion-initial border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors duration-300">
-          <div class="h-44 overflow-hidden">
-            <img src="https://res.cloudinary.com/doj03xgr2/image/upload/v1697726328/Elysium2084WebApp/Elysium_5_rprhj6.jpg"
-              alt="Elysium System" class="w-full h-full object-cover" />
-          </div>
-          <div class="p-5">
-            <div class="flex items-start justify-between mb-2">
-              <h3 class="text-base font-semibold text-zinc-100">Elysium System</h3>
-              <span class="text-xs text-zinc-600 ml-2 mt-0.5 shrink-0">AI Game Engine</span>
-            </div>
-            <p class="text-sm text-zinc-500 mb-4 leading-relaxed">
-              AI-driven narrative game with LLM-powered story generation and avatar-based worldbuilding. Python, FastAPI, OpenAI, LangChain.
-            </p>
-            <a href="https://elysium2084.wl.r.appspot.com/" target="_blank" rel="noopener noreferrer"
-              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-              Visit project
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-
-      </div>
-    </section>
+    <!-- ── Portfolio GenAI ───────────────────────────────────── -->
+    <PortfolioImageScroll
+      :media-assets="genAiAssets"
+      :sort-by="lpGenAiSortBy"
+      title="Generative AI — Image Diffusion"
+      link-href="/portfolio-GenAI"
+      link-label="View portfolio"
+      :max-images="14"
+    />
 
     <!-- ── Synthemo video showcase ───────────────────────────── -->
     <section

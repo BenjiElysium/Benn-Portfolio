@@ -15,6 +15,9 @@ const mediaAssets = [
   { tag: "logi-animation", mediaType: "video" },
 ];
 
+// Sort options: 'random' | 'newest' | 'oldest' | 'name'
+const cgiSortBy = 'name';
+
 const handleImageClick = (image) => {
   console.log('Image clicked:', image);
 };
@@ -50,7 +53,7 @@ const handleImageClick = (image) => {
         :column-width="320"
         :gap="16"
         :max-width="2400"
-        sort-by="newest"
+        :sort-by="cgiSortBy"
         @image-click="handleImageClick"
       />
     </div>
