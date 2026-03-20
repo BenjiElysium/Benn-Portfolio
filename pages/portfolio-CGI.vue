@@ -11,8 +11,7 @@ useSeoMeta({
 });
 
 const mediaAssets = [
-  { tag: "philipbenn-render", mediaType: "image" },
-  { tag: "logi-animation", mediaType: "video" },
+  { tag: 'philipbenn-render', mediaType: 'image' },
 ];
 
 // Sort options: 'random' | 'newest' | 'oldest' | 'name'

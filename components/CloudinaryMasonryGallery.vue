@@ -36,10 +36,9 @@ const modalVisible = ref(false);
 // Function to fetch Cloudinary images by tag
 const fetchImagesByTag = async (tag) => {
   try {
-    // Construct Cloudinary API URL
-    const cloudName = 'doj03xgr2'; // Using your cloud name from the examples
+    const cloudName = 'doj03xgr2';
     const url = `https://res.cloudinary.com/${cloudName}/image/list/${tag}.json`;
-    
+
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch images');
     const data = await response.json();
@@ -67,20 +66,17 @@ const fetchImagesByFolder = async (folder) => {
 const loadAllImages = async () => {
   loading.value = true;
   items.value = [];
-  
+
   for (const asset of props.mediaAssets) {
     if (asset.mediaType === 'image') {
       let processedImages = [];
-      
-      // Check if it's a folder or tag
+
       if (asset.folder) {
         const images = await fetchImagesByFolder(asset.folder);
-        // Images from folder API are already processed
         processedImages = images;
       } else if (asset.tag) {
         const images = await fetchImagesByTag(asset.tag);
-        // Process tag-based images
-        processedImages = images.map(img => ({
+        processedImages = images.map((img) => ({
           publicId: img.public_id,
           format: img.format,
           version: img.version,
@@ -93,13 +89,13 @@ const loadAllImages = async () => {
           source: asset.tag
         }));
       }
-      
+
       items.value = [...items.value, ...processedImages];
     }
   }
-  
+
   items.value = sortItems([...items.value]);
-  
+
   loading.value = false;
 };
 
