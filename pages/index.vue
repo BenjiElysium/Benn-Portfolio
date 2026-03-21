@@ -1,5 +1,65 @@
 <script setup>
 import YouTubeEmbed from '~/components/YouTubeEmbed.vue';
+import { SpeakerWaveIcon, SpeakerXMarkIcon, PlayIcon } from '@heroicons/vue/24/solid';
+
+const showFallback = ref(false);
+const showEndCard = ref(false);
+const isMuted = ref(true);
+const heroVideo = ref(null);
+const heroVideoContainer = ref(null);
+
+const videoPlaylist = [
+  '/videos/Old_geezer_appears_and_smiles_delpmaspu_.mp4',
+  '/videos/Have_fun_with_this_one_delpmaspu_.mp4',
+];
+const currentVideoIndex = ref(0);
+
+function onVideoEnded() {
+  const nextIndex = currentVideoIndex.value + 1;
+  if (nextIndex >= videoPlaylist.length) {
+    // Sequence complete — show end card headshot
+    showEndCard.value = true;
+    return;
+  }
+  currentVideoIndex.value = nextIndex;
+  const video = heroVideo.value;
+  if (!video) return;
+  video.src = videoPlaylist[nextIndex];
+  video.muted = isMuted.value;
+  video.play();
+}
+
+function toggleMute() {
+  if (!heroVideo.value) return;
+  isMuted.value = !isMuted.value;
+  heroVideo.value.muted = isMuted.value;
+}
+
+function restartPlaylist() {
+  showEndCard.value = false;
+  showFallback.value = false;
+  currentVideoIndex.value = 0;
+  nextTick(() => {
+    if (!heroVideo.value) return;
+    heroVideo.value.src = videoPlaylist[0];
+    heroVideo.value.muted = isMuted.value;
+    heroVideo.value.play();
+  });
+}
+
+// Mute when video scrolls out of view, restore when back
+let observer = null;
+onMounted(() => {
+  observer = new IntersectionObserver(
+    ([entry]) => {
+      if (!heroVideo.value) return;
+      heroVideo.value.muted = !entry.isIntersecting || isMuted.value;
+    },
+    { threshold: 0.1 }
+  );
+  if (heroVideoContainer.value) observer.observe(heroVideoContainer.value);
+});
+onUnmounted(() => observer?.disconnect());
 
 const cgiAssets = [
   { tag: 'philipbenn-render', mediaType: 'image' },
@@ -175,17 +235,42 @@ const cardVisible = (delay = 0) => ({
           </div>
         </div>
 
-        <!-- Right: headshot — outer div carries parallax, inner carries entrance animation -->
+        <!-- Right: hero video / headshot fallback -->
         <div :style="headshotParallax" class="shrink-0">
           <div
             v-motion
             :initial="{ opacity: 0, scale: 0.94, x: 30 }"
             :enter="{ opacity: 1, scale: 1, x: 0, transition: { delay: 400, duration: 900, ease: 'easeOut' } }"
             class="motion-initial w-52 sm:w-60 md:w-64 lg:w-72">
-            <img
-              src="~/assets/images/Philip_Headshot1-web.jpg"
-              alt="Philip Benn"
-              class="w-full object-cover object-top rounded-lg aspect-[3/4]" />
+            <div ref="heroVideoContainer" class="relative">
+              <template v-if="!showEndCard && !showFallback">
+                <video
+                  ref="heroVideo"
+                  :src="videoPlaylist[0]"
+                  muted
+                  autoplay
+                  playsinline
+                  class="w-full object-cover object-top rounded-lg aspect-[9/16]"
+                  @ended="onVideoEnded"
+                  @error="showFallback = true" />
+                <button
+                  @click="toggleMute"
+                  class="absolute bottom-3 right-3 p-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/60 transition-all">
+                  <component :is="isMuted ? SpeakerXMarkIcon : SpeakerWaveIcon" class="w-4 h-4" />
+                </button>
+              </template>
+              <div v-else class="relative">
+                <img
+                  src="~/assets/images/Philip-Flux-HeadShot1-VT.png"
+                  alt="Philip Benn"
+                  class="w-full object-cover object-top rounded-lg aspect-[9/16] animate-fade-in" />
+                <button
+                  @click="restartPlaylist"
+                  class="absolute bottom-3 right-3 p-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/60 transition-all">
+                  <PlayIcon class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
