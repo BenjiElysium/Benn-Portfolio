@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
   videoId: {
@@ -15,6 +15,16 @@ const props = defineProps({
     default: 'maxresdefault',
     validator: (value) => ['default', 'mqdefault', 'hqdefault', 'sddefault', 'maxresdefault'].includes(value)
   },
+  /** When true (default), try maxres first then fall back if the image 404s (common for new or short videos). */
+  thumbnailFallback: {
+    type: Boolean,
+    default: true
+  },
+  /** Optional full URL for poster image (e.g. custom still). Use when YouTube CDN only serves generic placeholders. */
+  posterUrl: {
+    type: String,
+    default: ''
+  },
   autoplay: {
     type: Boolean,
     default: true
@@ -24,8 +34,31 @@ const props = defineProps({
 const isLoaded = ref(false);
 const isHovered = ref(false);
 
+// maxres often 404s; hqdefault can be the generic grey TV icon while sddefault (640×480) is a different frame
+const THUMB_ORDER = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default'];
+const thumbIndex = ref(0);
+
 const thumbnailUrl = computed(() => {
-  return `https://img.youtube.com/vi/${props.videoId}/${props.thumbnailQuality}.jpg`;
+  if (props.posterUrl) return props.posterUrl;
+  const tier = props.thumbnailFallback
+    ? THUMB_ORDER[thumbIndex.value] ?? 'hqdefault'
+    : props.thumbnailQuality;
+  return `https://i.ytimg.com/vi/${props.videoId}/${tier}.jpg`;
+});
+
+const onThumbError = () => {
+  if (!props.thumbnailFallback) return;
+  if (thumbIndex.value < THUMB_ORDER.length - 1) {
+    thumbIndex.value += 1;
+  }
+};
+
+watch(() => props.videoId, () => {
+  thumbIndex.value = 0;
+});
+
+watch(() => props.posterUrl, () => {
+  thumbIndex.value = 0;
 });
 
 const embedUrl = computed(() => {
@@ -55,11 +88,13 @@ const loadVideo = () => {
         >
           <!-- Thumbnail image -->
           <img
+            :key="`${videoId}-${thumbIndex}-${posterUrl || ''}`"
             :src="thumbnailUrl"
             :alt="title"
             class="w-full h-full object-cover transition-all duration-500"
             :class="{ 'scale-[1.02]': isHovered }"
             loading="lazy"
+            @error="onThumbError"
           />
           
           <!-- Play button - Minimal elegant style -->

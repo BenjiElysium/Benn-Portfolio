@@ -12,15 +12,22 @@ useSeoMeta({
 
 // Synthemo Creative Brand Spec videos
 const brandSpecVideos = [
-  { id: 'z0e1Sf_8_vw', title: 'Brand Spec 01' },
-  { id: 'pXRkS8Us2GA', title: 'Brand Spec 02' },
-  { id: 'V5zsNyGktUA', title: 'Brand Spec 03' },
-  { id: 'd4D5FY7ddgo', title: 'Brand Spec 04' },
-  { id: 'iySqpWrkkiM', title: 'Brand Spec 05' },
+  { id: 'z0e1Sf_8_vw', title: 'Brand Spec: Calm' },
+  { id: 'pXRkS8Us2GA', title: 'Brand Spec: Arjé' },
+  { id: 'V5zsNyGktUA', title: 'Brand Spec: Le Labo' },
+  { id: 'd4D5FY7ddgo', title: 'Brand Spec: Arc\'teryx' },
+  { id: 'iySqpWrkkiM', title: 'Brand Spec: Rivian' },
 ];
 
 // Synthemo Labs — Northline / OP Personas
 const northlineVideos = [
+  {
+    id: 'rZr73BKwWSQ',
+    subject: 'Alpha — OP01',
+    pattern: 'Origin Pattern',
+    series: 'Northline / OP Personas',
+    format: 'Interview excerpts (intro)',
+  },
   {
     id: 'qJkfeqn0mJA',
     subject: 'Mira — OP07',
@@ -44,6 +51,35 @@ const northlineVideos = [
   },
 ];
 
+// Synthemo Labs — Misc. Veo 3.1 (Cloudinary, 9:16 vertical)
+const veo31Videos = [
+  {
+    id: 'veo-dec-spore-connections',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Dec_25__data_spore_connections_32s_202512252_zkrhic.mp4',
+    title: 'Data spore connections',
+  },
+  {
+    id: 'veo-jan-foundry',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Jan_01__foundryvisionary_15s_202601012149_a_ockibh.mp4',
+    title: 'Foundry visionary',
+  },
+  {
+    id: 'veo-17th-gentleman',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/17thCenturyGentleman2_htwodm.mp4',
+    title: '17th Century Gentleman On Augustus Caesar',
+  },
+  {
+    id: 'veo-dec-spore',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Dec_13__data_spore_37s_202512291931_kcg20_ehciwy.mp4',
+    title: 'Data spore',
+  },
+  {
+    id: 'veo-centroid',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/The_centroid_device_202511121848_jfzp3_g5mfdn.mp4',
+    title: 'The centroid device',
+  },
+];
+
 // Apple Demo ID videos (Cloudinary)
 const appleVideos = [
   { id: 1, src: 'https://res.cloudinary.com/doj03xgr2/video/upload/v1706162014/Portfolio-Videos/Demo-IDs-Apple-Ovid2_qhdsly.mp4', title: 'Apple Demo - Ovid' },
@@ -54,6 +90,7 @@ const appleVideos = [
 
 // Toggle state
 const labsOpen  = ref(false);
+const veo31Open = ref(false);
 const appleOpen = ref(false);
 </script>
 
@@ -202,6 +239,57 @@ const appleOpen = ref(false);
     <!-- Divider -->
     <div class="border-t border-zinc-800 my-2"></div>
 
+    <!-- ── Synthemo Labs — Misc. Veo 3.1 ─────────────────────── -->
+    <section class="mb-6">
+
+      <button
+        @click="veo31Open = !veo31Open"
+        class="w-full flex items-center justify-between py-4 text-left group"
+      >
+        <div>
+          <h2 class="text-2xl font-medium text-zinc-100 group-hover:text-white transition-colors">Synthemo Labs</h2>
+          <p class="text-zinc-500 text-sm mt-1">Misc. Veo3.1 Generations</p>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+          :class="['text-zinc-500 transition-transform duration-300', veo31Open ? 'rotate-180' : '']"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <Transition
+        enter-active-class="transition-all ease-out duration-300"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all ease-in duration-200"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div v-if="veo31Open" class="mt-4 mb-10">
+          <div class="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
+            <div
+              v-for="video in veo31Videos"
+              :key="video.id"
+              class="flex-shrink-0 w-[200px] sm:w-[240px] snap-start rounded-lg overflow-hidden bg-zinc-800/30 border border-zinc-700/50 flex flex-col"
+            >
+              <div class="aspect-[9/16] w-full bg-black">
+                <video controls playsinline class="veo-portrait-video w-full h-full object-cover">
+                  <source :src="video.src" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              <p class="text-zinc-500 text-xs p-3 leading-snug">{{ video.title }}</p>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </section>
+
+    <!-- Divider -->
+    <div class="border-t border-zinc-800 my-2"></div>
+
     <!-- ── GenAI Demo IDs: Apple Logo ──────────────────────────── -->
     <section class="mb-6">
 
@@ -262,4 +350,15 @@ const appleOpen = ref(false);
 .scrollbar-thin::-webkit-scrollbar-track { background: rgba(63, 63, 70, 0.2); border-radius: 2px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 2px; }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.65); }
+</style>
+
+<!-- Fullscreen must not use scoped: pseudo-class applies to element in top layer -->
+<style>
+.veo-portrait-video:fullscreen,
+.veo-portrait-video:-webkit-full-screen {
+  object-fit: contain !important;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
 </style>
