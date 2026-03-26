@@ -59,6 +59,11 @@ const veo31Videos = [
     title: 'Data spore connections',
   },
   {
+    id: 'veo-humanoid-prototype',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Jan_14__humanoid_vertical_37s_202601191836_h_k792kd.mp4',
+    title: 'Humanoid prototype',
+  },
+  {
     id: 'veo-jan-foundry',
     src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Jan_01__foundryvisionary_15s_202601012149_a_ockibh.mp4',
     title: 'Foundry visionary',
@@ -74,9 +79,24 @@ const veo31Videos = [
     title: 'Data spore',
   },
   {
+    id: 'veo-robotics',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Jan_19__1852_31s_202601200702_1ppc2_yvcppf.mp4',
+    title: 'Robotics',
+  },
+  {
     id: 'veo-centroid',
     src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/The_centroid_device_202511121848_jfzp3_g5mfdn.mp4',
     title: 'The centroid device',
+  },
+  {
+    id: 'veo-portal',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Dec_13__data_spore_29s_202512291856_69l15_md7zgs.mp4',
+    title: 'The portal eye',
+  },
+  {
+    id: 'veo-one-becomes-the-other',
+    src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/One_becomes_the_202511121842_g40af_ehmbzk.mp4',
+    title: 'One becomes the other',
   },
 ];
 
