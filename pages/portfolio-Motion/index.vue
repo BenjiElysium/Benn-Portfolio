@@ -51,8 +51,13 @@ const northlineVideos = [
   },
 ];
 
-// Synthemo Labs — Misc. Veo 3.1 (Cloudinary, 9:16 vertical)
+// Synthemo Labs — Misc. Veo 3.1 (YouTube Short + Cloudinary, 9:16 vertical)
 const veo31Videos = [
+  {
+    id: 'veo-yt-short-veo',
+    youtubeId: 'FXfqXjkuTZw',
+    title: 'Veo 3.1 — YouTube Short',
+  },
   {
     id: 'veo-dec-spore-connections',
     src: 'https://res.cloudinary.com/doj03xgr2/video/upload/Portfolio-Videos/Dec_25__data_spore_connections_32s_202512252_zkrhic.mp4',
@@ -294,8 +299,20 @@ const appleOpen = ref(false);
               :key="video.id"
               class="flex-shrink-0 w-[200px] sm:w-[240px] snap-start rounded-lg overflow-hidden bg-zinc-800/30 border border-zinc-700/50 flex flex-col"
             >
-              <div class="aspect-[9/16] w-full bg-black">
-                <video controls playsinline class="veo-portrait-video w-full h-full object-cover">
+              <div class="aspect-[9/16] w-full bg-black relative">
+                <YouTubeEmbed
+                  v-if="video.youtubeId"
+                  class="absolute inset-0 h-full w-full min-h-0"
+                  :video-id="video.youtubeId"
+                  :title="video.title"
+                  orientation="portrait"
+                />
+                <video
+                  v-else
+                  controls
+                  playsinline
+                  class="veo-portrait-video absolute inset-0 w-full h-full object-cover"
+                >
                   <source :src="video.src" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>

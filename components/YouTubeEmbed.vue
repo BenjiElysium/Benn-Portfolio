@@ -28,6 +28,12 @@ const props = defineProps({
   autoplay: {
     type: Boolean,
     default: true
+  },
+  /** Use 9:16 layout for YouTube Shorts (default is 16:9). */
+  orientation: {
+    type: String,
+    default: 'landscape',
+    validator: (v) => ['landscape', 'portrait'].includes(v)
   }
 });
 
@@ -74,11 +80,16 @@ const loadVideo = () => {
 <template>
   <div 
     class="youtube-embed-wrapper"
+    :class="{ 'h-full w-full min-h-0': orientation === 'portrait' }"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
   >
-    <div class="youtube-embed">
-      <div class="aspect-video">
+    <div class="youtube-embed" :class="{ 'h-full min-h-0': orientation === 'portrait' }">
+      <div
+        :class="orientation === 'portrait'
+          ? 'relative h-full w-full min-h-0'
+          : 'aspect-video'"
+      >
         <!-- Thumbnail with play button (before load) -->
         <button
           v-if="!isLoaded"
@@ -151,6 +162,8 @@ const loadVideo = () => {
   padding-bottom: 56.25%;
   height: 0;
 }
+
+/* portrait uses Tailwind aspect-[9/16] on the element */
 
 /* Play button styles */
 .play-container {
