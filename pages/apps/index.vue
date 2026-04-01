@@ -5,20 +5,6 @@ useHead({ title: 'Apps — Philip Benn', description: 'Interactive tools and cal
 
 const tools = [
   {
-    slug: 'stock-analyzer',
-    name: 'Stock Analyzer',
-    desc: 'NVDA and BX valuation tool with live Finnhub prices, P/E and P/DE projection charts, DCF intrinsic floor calculator, and a personal watchlist.',
-    tags: ['Finance', 'Live Data', 'Valuation'],
-    accent: '#22c55e',
-  },
-  {
-    slug: 'compound-calculator',
-    name: 'Compound Interest Calculator',
-    desc: 'Model long-term portfolio growth with volatility simulation, drawable return and spend curves, and historical scenario overlays.',
-    tags: ['Finance', 'Interactive', 'Simulation'],
-    accent: '#6366F1',
-  },
-  {
     slug: 'fluxion',
     name: 'Fluxion',
     desc: 'Node-based image generation platform giving artists direct control over diffusion workflows. Built on Next.js, Supabase, and Replicate.',
@@ -62,6 +48,20 @@ const tools = [
     accent: '#6366F1',
     href: 'https://synthemo.com',
     external: true,
+  },
+  {
+    slug: 'compound-calculator',
+    name: 'Compound Interest Calculator',
+    desc: 'Model long-term portfolio growth with volatility simulation, drawable return and spend curves, and historical scenario overlays.',
+    tags: ['Finance', 'Interactive', 'Simulation'],
+    accent: '#6366F1',
+  },
+  {
+    slug: 'stock-analyzer',
+    name: 'Stock Analyzer',
+    desc: 'NVDA and BX valuation tool with live Finnhub prices, P/E and P/DE projection charts, DCF intrinsic floor calculator, and a personal watchlist.',
+    tags: ['Finance', 'Live Data', 'Valuation'],
+    accent: '#22c55e',
   },
 ]
 </script>
