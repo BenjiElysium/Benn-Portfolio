@@ -23,8 +23,8 @@ const statusText = ref('Connecting to Finnhub...')
 const livePaused = ref(false)
 let closingWsForPause = false
 
-/** How often projection charts refresh from live price (WS ticks are faster; avoids blink from full redraws). */
-const CHART_PRICE_UPDATE_MS = 5000
+/** Live price → projection chart refresh. Patches Chart.js in place (no destroy); 1–2s is usually smooth. */
+const CHART_PRICE_UPDATE_MS = 2000
 
 // ─── Cost bases (personal watchlist basis prices) ─────────────
 const BASES = {
@@ -55,8 +55,39 @@ const bPMax = ref(29)
 const bG = ref(10)     // %
 const bD = ref(8)      // %
 
-// ─── Watchlist ────────────────────────────────────────────────
-const watchlist = ref(['NVDA', 'BX', 'AAPL', 'AMZN', 'GOOGL', 'CRWD', 'APO', 'ARES', 'ARKG', 'PRME', 'ALNY'])
+// ─── Watchlist (persisted in localStorage on this browser) ─────
+const WATCHLIST_STORAGE_KEY = 'sa-stock-watchlist-v1'
+const DEFAULT_WATCHLIST = Object.freeze([
+  'NVDA', 'BX', 'AAPL', 'AMZN', 'GOOGL', 'CRWD', 'APO', 'ARES', 'ARKG', 'PRME', 'ALNY',
+])
+
+function normalizeWatchlist(raw) {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set()
+  const out = []
+  for (const item of raw) {
+    const t = String(item).trim().toUpperCase()
+    if (!t || !/^[A-Z0-9.\-]{1,16}$/.test(t)) continue
+    if (seen.has(t)) continue
+    seen.add(t)
+    out.push(t)
+  }
+  return out
+}
+
+const watchlist = ref([...DEFAULT_WATCHLIST])
+if (import.meta.client) {
+  try {
+    const stored = localStorage.getItem(WATCHLIST_STORAGE_KEY)
+    if (stored) {
+      const normalized = normalizeWatchlist(JSON.parse(stored))
+      if (normalized.length) watchlist.value = normalized
+    }
+  } catch {
+    /* ignore corrupt storage */
+  }
+}
+
 const newTicker = ref('')
 
 // ─── Glossary toggles ─────────────────────────────────────────
@@ -169,21 +200,48 @@ async function renderNVDAProjChart() {
   )
 }
 
+function canPatchBarComboChart(chart, canvasEl, chartType) {
+  if (!ChartJS || !chart?.canvas || !canvasEl) return false
+  try {
+    if (chart.canvas !== canvasEl) return false
+    const reg = ChartJS.getChart(canvasEl)
+    if (reg != null && reg !== chart) return false
+    return chart.config?.type === chartType && chart.data?.datasets?.length === 2
+  } catch {
+    return false
+  }
+}
+
 async function renderNVDARevChart() {
   if (!ChartJS) return
   await nextTick()
   const nRevEl = document.getElementById('n-rev-chart')
   if (!nRevEl) return
-  if (nRevChart) nRevChart.destroy()
   const gc = window.matchMedia('(prefers-color-scheme:dark)').matches
     ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+
+  const revData = nRevs.value.map(v => +v.toFixed(1))
+  const epsData = nQEPS.value.map(v => +v.toFixed(2))
+
+  if (canPatchBarComboChart(nRevChart, nRevEl, 'bar')) {
+    nRevChart.data.datasets[0].data = revData
+    nRevChart.data.datasets[1].data = epsData
+    nRevChart.options.scales.y.grid.color = gc
+    nRevChart.update()
+    return
+  }
+
+  if (nRevChart) {
+    try { nRevChart.destroy() } catch { /* ignore */ }
+  }
   nRevChart = new ChartJS(nRevEl, {
     type: 'bar',
+    animation: false,
     data: {
       labels: ['Q1 Apr26', 'Q2 Jul26', 'Q3 Oct26', 'Q4 Jan27'],
       datasets: [
-        { label: 'Revenue', data: nRevs.value.map(v => +v.toFixed(1)), backgroundColor: '#378ADD', yAxisID: 'y' },
-        { label: 'EPS', data: nQEPS.value.map(v => +v.toFixed(2)), type: 'line', borderColor: '#BA7517', backgroundColor: 'transparent', pointBackgroundColor: '#BA7517', pointRadius: 5, yAxisID: 'y2' },
+        { label: 'Revenue', data: revData, backgroundColor: '#378ADD', yAxisID: 'y' },
+        { label: 'EPS', data: epsData, type: 'line', borderColor: '#BA7517', backgroundColor: 'transparent', pointBackgroundColor: '#BA7517', pointRadius: 5, yAxisID: 'y2' },
       ],
     },
     options: {
@@ -220,16 +278,31 @@ async function renderBXDeChart() {
   await nextTick()
   const bDeEl = document.getElementById('b-de-chart')
   if (!bDeEl) return
-  if (bDeChart) bDeChart.destroy()
   const gc = window.matchMedia('(prefers-color-scheme:dark)').matches
     ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+
+  const deData = [...bDeYears.value]
+  const distData = [...bDistYears.value]
+
+  if (canPatchBarComboChart(bDeChart, bDeEl, 'bar')) {
+    bDeChart.data.datasets[0].data = deData
+    bDeChart.data.datasets[1].data = distData
+    bDeChart.options.scales.y.grid.color = gc
+    bDeChart.update()
+    return
+  }
+
+  if (bDeChart) {
+    try { bDeChart.destroy() } catch { /* ignore */ }
+  }
   bDeChart = new ChartJS(bDeEl, {
     type: 'bar',
+    animation: false,
     data: {
       labels: ['Now', 'Year 1', 'Year 2', 'Year 3'],
       datasets: [
-        { label: 'DE/share', data: bDeYears.value, backgroundColor: '#378ADD', yAxisID: 'y' },
-        { label: 'Dist/share', data: bDistYears.value, type: 'line', borderColor: '#1D9E75', backgroundColor: 'transparent', pointBackgroundColor: '#1D9E75', pointRadius: 5, yAxisID: 'y2' },
+        { label: 'DE/share', data: deData, backgroundColor: '#378ADD', yAxisID: 'y' },
+        { label: 'Dist/share', data: distData, type: 'line', borderColor: '#1D9E75', backgroundColor: 'transparent', pointBackgroundColor: '#1D9E75', pointRadius: 5, yAxisID: 'y2' },
       ],
     },
     options: {
@@ -377,15 +450,19 @@ const throttledBXProj = throttle(() => {
 }, CHART_PRICE_UPDATE_MS)
 
 // ─── Watchers ─────────────────────────────────────────────────
-// Sliders + zoom: re-render only the chart that depends on those inputs (avoids rebuilding bar charts on every tick)
+// NVDA: P/E sliders → projection only; revenue sliders → FY2027 bar chart only (no cross-calls)
 watch([nEps1, nEps2, nPeMin, nPeMax, nG, nD, nProjZoomed], () => {
   if (activeTab.value === 'nvda') renderNVDAProjChart()
 })
 watch([nR1, nR2, nR3, nR4], () => {
   if (activeTab.value === 'nvda') renderNVDARevChart()
 })
-watch([bDe1, bDe2, bPay, bPMin, bPMax, bG, bD, bProjZoomed], () => {
-  if (activeTab.value === 'bx') renderBXCharts()
+// BX: P/DE + zoom → projection only; DE growth card sliders → DE/dist bar chart only (bDe1/bG/bPay affect both)
+watch([bDe1, bDe2, bPMin, bPMax, bG, bD, bProjZoomed], () => {
+  if (activeTab.value === 'bx') renderBXProjChart()
+})
+watch([bDe1, bPay, bG], () => {
+  if (activeTab.value === 'bx') renderBXDeChart()
 })
 // Live price: only P/E projection chart (throttled); bar charts do not use spot price
 watch(nvdaPrice, throttledNVDAProj)
@@ -395,6 +472,15 @@ watch(activeTab, (tab) => {
   if (tab === 'nvda') renderNVDACharts()
   if (tab === 'bx') renderBXCharts()
 })
+
+watch(watchlist, () => {
+  if (!import.meta.client) return
+  try {
+    localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlist.value))
+  } catch {
+    /* quota / private mode */
+  }
+}, { deep: true })
 </script>
 
 <template>
