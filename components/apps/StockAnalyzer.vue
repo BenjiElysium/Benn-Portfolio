@@ -19,6 +19,12 @@ const activeTab = ref('nvda')
 const prices = reactive({})
 const prevPrices = reactive({})
 const statusText = ref('Connecting to Finnhub...')
+/** When true, WebSocket is closed and live ticks are ignored. Initial load (REST) still runs on mount / resume. */
+const livePaused = ref(false)
+let closingWsForPause = false
+
+/** How often projection charts refresh from live price (WS ticks are faster; avoids blink from full redraws). */
+const CHART_PRICE_UPDATE_MS = 5000
 
 // ─── Cost bases (personal watchlist basis prices) ─────────────
 const BASES = {
@@ -151,19 +157,23 @@ const watchlistRows = computed(() =>
 )
 
 // ─── Chart rendering ──────────────────────────────────────────
-async function renderNVDACharts() {
+async function renderNVDAProjChart() {
   if (!ChartJS) return
   await nextTick()
   const nProjEl = document.getElementById('n-proj-chart')
-  const nRevEl = document.getElementById('n-rev-chart')
-  if (!nProjEl || !nRevEl) return
-
+  if (!nProjEl) return
   nProjChart = buildProjectionChart(
     ChartJS, nProjEl, nvdaPrice.value,
     nEps1.value, nEps2.value, nPeMin.value, nPeMax.value, nG.value / 100,
     nProjChart, nProjZoomed.value ? 3 : 10,
   )
+}
 
+async function renderNVDARevChart() {
+  if (!ChartJS) return
+  await nextTick()
+  const nRevEl = document.getElementById('n-rev-chart')
+  if (!nRevEl) return
   if (nRevChart) nRevChart.destroy()
   const gc = window.matchMedia('(prefers-color-scheme:dark)').matches
     ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
@@ -188,19 +198,28 @@ async function renderNVDACharts() {
   })
 }
 
-async function renderBXCharts() {
+async function renderNVDACharts() {
+  await renderNVDAProjChart()
+  await renderNVDARevChart()
+}
+
+async function renderBXProjChart() {
   if (!ChartJS) return
   await nextTick()
   const bProjEl = document.getElementById('b-proj-chart')
-  const bDeEl = document.getElementById('b-de-chart')
-  if (!bProjEl || !bDeEl) return
-
+  if (!bProjEl) return
   bProjChart = buildProjectionChart(
     ChartJS, bProjEl, bxPrice.value,
     bDe1.value, bDe2.value, bPMin.value, bPMax.value, bG.value / 100,
     bProjChart, bProjZoomed.value ? 3 : 10,
   )
+}
 
+async function renderBXDeChart() {
+  if (!ChartJS) return
+  await nextTick()
+  const bDeEl = document.getElementById('b-de-chart')
+  if (!bDeEl) return
   if (bDeChart) bDeChart.destroy()
   const gc = window.matchMedia('(prefers-color-scheme:dark)').matches
     ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
@@ -225,6 +244,11 @@ async function renderBXCharts() {
   })
 }
 
+async function renderBXCharts() {
+  await renderBXProjChart()
+  await renderBXDeChart()
+}
+
 // ─── Finnhub REST + WebSocket ─────────────────────────────────
 const allTickers = computed(() => {
   const extras = watchlist.value.filter(t => t !== 'NVDA' && t !== 'BX')
@@ -247,14 +271,24 @@ async function fetchQuotes(tickers) {
   )
 }
 
+function disconnectWS() {
+  if (ws) {
+    ws.close()
+    ws = null
+  }
+}
+
 function connectWS() {
   if (!FINNHUB_KEY) { statusText.value = 'No API key configured'; return }
+  if (livePaused.value) return
+  disconnectWS()
   ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`)
   ws.onopen = () => {
     allTickers.value.forEach(t => ws.send(JSON.stringify({ type: 'subscribe', symbol: t })))
     statusText.value = 'Live'
   }
   ws.onmessage = (e) => {
+    if (livePaused.value) return
     try {
       const msg = JSON.parse(e.data)
       if (msg.type === 'trade' && msg.data) {
@@ -265,8 +299,28 @@ function connectWS() {
       }
     } catch {}
   }
-  ws.onerror = () => { statusText.value = 'Connection error' }
-  ws.onclose = () => { if (statusText.value === 'Live') statusText.value = 'Disconnected' }
+  ws.onerror = () => { if (!livePaused.value) statusText.value = 'Connection error' }
+  ws.onclose = () => {
+    if (closingWsForPause) {
+      closingWsForPause = false
+      return
+    }
+    if (statusText.value === 'Live') statusText.value = 'Disconnected'
+  }
+}
+
+async function toggleLiveStream() {
+  if (livePaused.value) {
+    livePaused.value = false
+    statusText.value = 'Connecting...'
+    await fetchQuotes(allTickers.value)
+    connectWS()
+  } else {
+    closingWsForPause = true
+    livePaused.value = true
+    disconnectWS()
+    statusText.value = 'Paused'
+  }
 }
 
 // ─── Watchlist actions ────────────────────────────────────────
@@ -293,29 +347,49 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  disconnectWS()
   ;[nProjChart, nRevChart, bProjChart, bDeChart].forEach(c => { if (c) c.destroy() })
 })
 
-// ─── Debounce helper ──────────────────────────────────────────
-function debounce(fn, ms) {
-  let t = null
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms) }
+// ─── Throttle: projection charts from live price (at most every CHART_PRICE_UPDATE_MS) ─
+function throttle(fn, ms) {
+  let last = 0
+  let timeout = null
+  return () => {
+    const now = Date.now()
+    const run = () => { last = Date.now(); fn() }
+    if (now - last >= ms) {
+      if (timeout) { clearTimeout(timeout); timeout = null }
+      run()
+    } else if (!timeout) {
+      timeout = setTimeout(() => {
+        timeout = null
+        run()
+      }, ms - (now - last))
+    }
+  }
 }
-const debouncedNVDA = debounce(() => { if (activeTab.value === 'nvda') renderNVDACharts() }, 600)
-const debouncedBX = debounce(() => { if (activeTab.value === 'bx') renderBXCharts() }, 600)
+const throttledNVDAProj = throttle(() => {
+  if (activeTab.value === 'nvda') renderNVDAProjChart()
+}, CHART_PRICE_UPDATE_MS)
+const throttledBXProj = throttle(() => {
+  if (activeTab.value === 'bx') renderBXProjChart()
+}, CHART_PRICE_UPDATE_MS)
 
 // ─── Watchers ─────────────────────────────────────────────────
-// Sliders + zoom: re-render immediately
-watch([nEps1, nEps2, nPeMin, nPeMax, nG, nD, nR1, nR2, nR3, nR4, nProjZoomed], () => {
-  if (activeTab.value === 'nvda') renderNVDACharts()
+// Sliders + zoom: re-render only the chart that depends on those inputs (avoids rebuilding bar charts on every tick)
+watch([nEps1, nEps2, nPeMin, nPeMax, nG, nD, nProjZoomed], () => {
+  if (activeTab.value === 'nvda') renderNVDAProjChart()
+})
+watch([nR1, nR2, nR3, nR4], () => {
+  if (activeTab.value === 'nvda') renderNVDARevChart()
 })
 watch([bDe1, bDe2, bPay, bPMin, bPMax, bG, bD, bProjZoomed], () => {
   if (activeTab.value === 'bx') renderBXCharts()
 })
-// Prices: debounced so rapid WS ticks don't thrash chart rebuilds
-watch(nvdaPrice, debouncedNVDA)
-watch(bxPrice, debouncedBX)
+// Live price: only P/E projection chart (throttled); bar charts do not use spot price
+watch(nvdaPrice, throttledNVDAProj)
+watch(bxPrice, throttledBXProj)
 // Tab switch: render the newly visible tab
 watch(activeTab, (tab) => {
   if (tab === 'nvda') renderNVDACharts()
@@ -336,8 +410,11 @@ watch(activeTab, (tab) => {
     <!-- ══════════════ NVDA TAB ══════════════ -->
     <div v-show="activeTab === 'nvda'">
       <div class="live-pill">
-        <span class="live-dot" />
+        <span class="live-dot" :class="{ paused: livePaused }" />
         <span>{{ statusText }}</span>
+        <button type="button" class="live-toggle" @click="toggleLiveStream">
+          {{ livePaused ? 'Start' : 'Pause' }}
+        </button>
       </div>
 
       <!-- Metric cards -->
@@ -537,8 +614,11 @@ watch(activeTab, (tab) => {
     <!-- ══════════════ BX TAB ══════════════ -->
     <div v-show="activeTab === 'bx'">
       <div class="live-pill">
-        <span class="live-dot" />
+        <span class="live-dot" :class="{ paused: livePaused }" />
         <span>{{ statusText }}</span>
+        <button type="button" class="live-toggle" @click="toggleLiveStream">
+          {{ livePaused ? 'Start' : 'Pause' }}
+        </button>
       </div>
 
       <div class="metrics">
@@ -726,8 +806,11 @@ watch(activeTab, (tab) => {
     <!-- ══════════════ WATCHLIST TAB ══════════════ -->
     <div v-show="activeTab === 'watchlist'">
       <div class="live-pill">
-        <span class="live-dot" />
+        <span class="live-dot" :class="{ paused: livePaused }" />
         <span>{{ statusText }}</span>
+        <button type="button" class="live-toggle" @click="toggleLiveStream">
+          {{ livePaused ? 'Start' : 'Pause' }}
+        </button>
       </div>
 
       <div class="add-row">
@@ -891,9 +974,23 @@ tr:hover td { background: var(--c-bg2); }
 
 /* ─── Misc components ────────────────────────────────────────── */
 .badge { font-size: 11px; font-weight: 500; background: var(--c-bg2); padding: 2px 8px; border-radius: 4px; color: var(--c-text2); }
-.live-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--c-text2); background: var(--c-bg2); padding: 3px 10px; border-radius: 20px; margin-bottom: 1.25rem; }
+.live-pill { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--c-text2); background: var(--c-bg2); padding: 4px 10px 4px 12px; border-radius: 20px; margin-bottom: 1.25rem; }
 .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; flex-shrink: 0; }
+.live-dot.paused { animation: none; background: var(--c-text3); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.live-toggle {
+  font-size: 11px;
+  padding: 3px 10px;
+  margin-left: 2px;
+  border: 0.5px solid var(--c-border2);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  color: var(--c-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.live-toggle:hover { background: var(--c-bg2); color: var(--c-text); }
 
 .add-row { display: flex; gap: 8px; margin-bottom: 1rem; }
 .add-row input[type=text] { flex: 1; font-size: 13px; padding: 6px 10px; border: 0.5px solid var(--c-border2); border-radius: var(--r-md); background: var(--c-bg); color: var(--c-text); font-family: inherit; }
