@@ -25,6 +25,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vueuse/motion": "^3.0.3",
     "@yeger/vue-masonry-wall": "^5.0.18",
+    "chart.js": "^4.5.1",
     "swiper": "^11.2.6",
     "typescript": "^5.8.3"
   }

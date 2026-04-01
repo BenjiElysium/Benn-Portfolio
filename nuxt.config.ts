@@ -17,6 +17,7 @@ export default defineNuxtConfig({
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
     public: {
       formspreeEndpoint: process.env.NUXT_PUBLIC_FORMSPREE_ENDPOINT || '',
+      finnhubApiKey: process.env.FINNHUB_API_KEY || '',
     }
   },
   app: {
