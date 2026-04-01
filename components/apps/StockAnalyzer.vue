@@ -414,9 +414,13 @@ function removeTicker(t) {
 onMounted(async () => {
   const { default: Chart } = await import('chart.js/auto')
   ChartJS = Chart
+  // Wait for DOM + finish chart init BEFORE fetchQuotes. Otherwise nvdaPrice/bxPrice watchers
+  // can run renderNVDAProjChart concurrently with the first renderNVDACharts and race on the
+  // same canvas (Chart.js throws / leaves nProjChart out of sync — sliders then no-op).
+  await nextTick()
+  await renderNVDACharts()
   await fetchQuotes(allTickers.value)
   connectWS()
-  renderNVDACharts()
 })
 
 onUnmounted(() => {
@@ -467,10 +471,11 @@ watch([bDe1, bPay, bG], () => {
 // Live price: only P/E projection chart (throttled); bar charts do not use spot price
 watch(nvdaPrice, throttledNVDAProj)
 watch(bxPrice, throttledBXProj)
-// Tab switch: render the newly visible tab
-watch(activeTab, (tab) => {
-  if (tab === 'nvda') renderNVDACharts()
-  if (tab === 'bx') renderBXCharts()
+// Tab switch: render the newly visible tab (await so charts exist before user drags sliders)
+watch(activeTab, async (tab) => {
+  await nextTick()
+  if (tab === 'nvda') await renderNVDACharts()
+  if (tab === 'bx') await renderBXCharts()
 })
 
 watch(watchlist, () => {
