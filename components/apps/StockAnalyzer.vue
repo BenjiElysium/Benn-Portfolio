@@ -11,6 +11,7 @@ import {
 let ChartJS = null
 let nProjChart = null, nRevChart = null
 let bProjChart = null, bDeChart = null
+let gProjChart = null, gHistPeChart = null, gEpsGainChart = null
 let nHistPeChart = null, nEpsGainChart = null, bHistPdeChart = null
 
 // API key now server-only — all Finnhub calls go through /api/finnhub/*
@@ -125,10 +126,53 @@ const bxHistCurrent = BX_HIST_PDE[0].value
 
 // ─── EPS vs Capital Gain historical evidence ──────────────────
 const EPS_VS_GAIN = [
+  // FY2017–FY2020: from original spreadsheet (source of truth)
   { year: 'FY2017', eps: 182.87, cap: 223.91 },
   { year: 'FY2018', eps:  79.81, cap:  81.27 },
   { year: 'FY2019', eps: -48.31, cap: -30.94 },
   { year: 'FY2020', eps:  66.32, cap:  76.09 },
+  // FY2021–FY2026: sourced from MacroTrends (EPS YoY) + Slickcharts (cap gain)
+  { year: 'FY2021', eps: 147.06, cap: 125.29 },
+  { year: 'FY2022', eps: -55.00, cap:  -50.31 },
+  { year: 'FY2023', eps: -55.00, cap: 238.87 },
+  { year: 'FY2024', eps: 600.00, cap: 171.17 },
+  { year: 'FY2025', eps: 147.06, cap:  38.88 },
+  { year: 'FY2026', eps:  66.67, cap:  -11.44 },
+]
+
+// ─── GOOGL Historical P/E seed ────────────────────────────────
+// Newest-first. Overridden at mount if Finnhub returns ≥8 quarters since 2016.
+const GOOGL_PE_SEED = [
+  { label: 'Current',  value: 20.12 },
+  { label: 'Jan 2025', value: 22.48 },
+  { label: 'Oct 2024', value: 23.55 },
+  { label: 'Jul 2024', value: 22.03 },
+  { label: 'Apr 2024', value: 25.10 },
+  { label: 'Jan 2024', value: 26.82 },
+  { label: 'Oct 2023', value: 27.05 },
+]
+function _googlSeedStats() {
+  const vals = GOOGL_PE_SEED.map(d => d.value)
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+  const sigma = Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length)
+  return { low: avg - sigma, high: avg + sigma }
+}
+const _gs = _googlSeedStats()
+const gHistPE = ref([...GOOGL_PE_SEED])
+
+// ─── GOOGL EPS vs Capital Gain ────────────────────────────────
+// EPS YoY from MacroTrends, capital gain from Slickcharts (calendar year).
+// Fiscal year = calendar year — no offset needed unlike NVDA.
+const GOOGL_EPS_VS_GAIN = [
+  { year: '2017', eps:  19.15, cap:  32.93 },
+  { year: '2018', eps:   3.46, cap:  -0.80 },
+  { year: '2019', eps:  12.20, cap:  28.18 },
+  { year: '2020', eps:  19.11, cap:  30.85 },
+  { year: '2021', eps:  91.43, cap:  65.30 },
+  { year: '2022', eps: -20.97, cap: -39.09 },
+  { year: '2023', eps:  27.19, cap:  58.32 },
+  { year: '2024', eps:  38.62, cap:  35.51 },
+  { year: '2025', eps:  34.45, cap:  65.35 },
 ]
 
 // ─── NVDA sliders ─────────────────────────────────────────────
@@ -210,9 +254,43 @@ const bxSliders = [
   },
 ]
 
+// ─── GOOGL sliders ─────────────────────────────────────────────
+const gEps1    = ref(12.00)
+const gEps2    = ref(15.00)
+const gPeMin   = ref(+_gs.low.toFixed(1))
+const gPeMax   = ref(+_gs.high.toFixed(1))
+const gG       = ref(15)
+const gG5      = ref(20)
+const gH5      = ref(12)
+const gD       = ref(10)
+const gBaseEPS = ref(10.81)  // 2025 actual EPS
+
+const googlSliders = [
+  {
+    section: 'P/E Valuation',
+    items: [
+      { label: '1-year forward EPS',  model: gEps1,    min: 5,  max: 20,  step: 0.01, fmt: v => dlr(v) },
+      { label: '2-year forward EPS',  model: gEps2,    min: 5,  max: 25,  step: 0.01, fmt: v => dlr(v) },
+      { label: 'Min P/E multiple',    model: gPeMin,   min: 10, max: 50,  step: 0.1,  fmt: fmtX },
+      { label: 'Max P/E multiple',    model: gPeMax,   min: 10, max: 60,  step: 0.1,  fmt: fmtX },
+      { label: 'Projection growth g', model: gG,       min: 5,  max: 40,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
+    ],
+  },
+  {
+    section: 'Two-phase DCF',
+    items: [
+      { label: '2025 base EPS',       model: gBaseEPS, min: 5,  max: 20,  step: 0.01, fmt: v => dlr(v) },
+      { label: 'Yr 1–5 growth (g5)',  model: gG5,      min: 5,  max: 50,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
+      { label: 'Yr 6–10 growth (h5)', model: gH5,      min: 3,  max: 30,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
+      { label: 'Discount rate d',     model: gD,       min: 5,  max: 15,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
+    ],
+  },
+]
+
 const currentSliders = computed(() => {
-  if (activeTab.value === 'nvda') return nvdaSliders
-  if (activeTab.value === 'bx') return bxSliders
+  if (activeTab.value === 'nvda')  return nvdaSliders
+  if (activeTab.value === 'bx')    return bxSliders
+  if (activeTab.value === 'googl') return googlSliders
   return []
 })
 
@@ -252,12 +330,17 @@ const nEpsGainCanvas = ref(null)
 const bProjCanvas    = ref(null)
 const bDeCanvas      = ref(null)
 const bHistPdeCanvas = ref(null)
+const gProjCanvas    = ref(null)
+const gHistPeCanvas  = ref(null)
+const gEpsGainCanvas = ref(null)
 
 // ─── Misc state ───────────────────────────────────────────────
-const nvdaGlossaryOpen = ref(false)
-const bxGlossaryOpen   = ref(false)
-const nProjZoomed      = ref(false)
-const bProjZoomed      = ref(false)
+const nvdaGlossaryOpen  = ref(false)
+const bxGlossaryOpen    = ref(false)
+const googlGlossaryOpen = ref(false)
+const nProjZoomed       = ref(false)
+const bProjZoomed       = ref(false)
+const gProjZoomed       = ref(false)
 
 // ─── NVDA computed ────────────────────────────────────────────
 const nvdaPrice   = computed(() => prices['NVDA'] || 176.63)
@@ -391,6 +474,68 @@ const bConviction = computed(() => {
     signal: 'RICH', color: 'red',
     reason: `P/DE ${pde}× — above the 29× fair-range ceiling`,
     context: `Multiple extended beyond historical fair value. Compression risk elevated.`,
+  }
+})
+
+// ─── GOOGL computed ────────────────────────────────────────────
+const googlPrice  = computed(() => prices['GOOGL'] || 160.00)
+const googlPrev   = computed(() => prevPrices['GOOGL'] || googlPrice.value)
+const googlChg    = computed(() => googlPrice.value - googlPrev.value)
+const googlChgPct = computed(() => googlChg.value / googlPrev.value)
+
+const gP1h = computed(() => gEps1.value * gPeMax.value)
+const gP1l = computed(() => gEps1.value * gPeMin.value)
+const gP2h = computed(() => gEps2.value * gPeMax.value)
+const gP2l = computed(() => gEps2.value * gPeMin.value)
+
+const g1Range    = computed(() => `${dlr(gP1l.value)}\u2013${dlr(gP1h.value)}`)
+const g2Range    = computed(() => `${dlr(gP2l.value)}\u2013${dlr(gP2h.value)}`)
+const g1RangeSub = computed(() => `${pct((gP1l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP1h.value - googlPrice.value) / googlPrice.value)}`)
+const g2RangeSub = computed(() => `${pct((gP2l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP2h.value - googlPrice.value) / googlPrice.value)}`)
+
+const gFloor = computed(() => computeTwoPhaseDCF({
+  baseEPS: gBaseEPS.value,
+  g5: gG5.value / 100,
+  h5: gH5.value / 100,
+  d:  gD.value  / 100,
+  terminalMultiplier: 10,
+}))
+const gVsFloor = computed(() => (gFloor.value - googlPrice.value) / googlPrice.value)
+
+const gHistStats = computed(() => {
+  const chronological = [...gHistPE.value].reverse()
+  const values = chronological.map(d => d.value)
+  return computeHistoricalStats(values)
+})
+
+const gConviction = computed(() => {
+  const pe = gHistPE.value[0]?.value ?? null
+  if (!pe) return null
+  const { avg, sigma, low, high } = gHistStats.value
+  if (pe < low - sigma) return {
+    signal: 'EXTREME BUY', color: 'emerald',
+    reason: `P/E ${pe.toFixed(1)}× — more than 2σ below avg (${avg.toFixed(1)}×)`,
+    context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
+  }
+  if (pe < low) return {
+    signal: 'STRONG BUY', color: 'emerald',
+    reason: `P/E ${pe.toFixed(1)}× — below the −1σ floor (${low.toFixed(1)}×)`,
+    context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
+  }
+  if (pe < avg) return {
+    signal: 'BUY', color: 'green',
+    reason: `P/E ${pe.toFixed(1)}× — below the historical avg (${avg.toFixed(1)}×)`,
+    context: `Multiple compressed below the long-run average — room to re-rate upward.`,
+  }
+  if (pe <= high) return {
+    signal: 'HOLD / FAIR', color: 'yellow',
+    reason: `P/E ${pe.toFixed(1)}× — within the ±1σ band (${low.toFixed(1)}–${high.toFixed(1)}×)`,
+    context: `Multiple within the normal historical range. Not cheap, not extended.`,
+  }
+  return {
+    signal: 'RICH', color: 'red',
+    reason: `P/E ${pe.toFixed(1)}× — above the +1σ ceiling (${high.toFixed(1)}×)`,
+    context: `Multiple extended beyond the historical high-end. Expect compression risk.`,
   }
 })
 
@@ -706,10 +851,113 @@ function renderBXCharts() {
   renderBXHistPDEChart()
 }
 
+// ─── GOOGL projection chart ───────────────────────────────────
+function renderGOOGLProjChart() {
+  if (!ChartJS) return
+  const el = gProjCanvas.value
+  if (!el) return
+  try {
+    gProjChart = buildProjectionChart(
+      ChartJS, el, googlPrice.value,
+      gEps1.value, gEps2.value, gPeMin.value, gPeMax.value, gG.value / 100,
+      gProjChart, gProjZoomed.value ? 3 : 10,
+    )
+  } catch {
+    safeDestroyChart(gProjChart); gProjChart = null
+    try {
+      gProjChart = buildProjectionChart(
+        ChartJS, el, googlPrice.value,
+        gEps1.value, gEps2.value, gPeMin.value, gPeMax.value, gG.value / 100,
+        null, gProjZoomed.value ? 3 : 10,
+      )
+    } catch { /* give up */ }
+  }
+}
+
+// ─── GOOGL Historical P/E chart ──────────────────────────────
+function renderGOOGLHistPEChart() {
+  if (!ChartJS) return
+  const el = gHistPeCanvas.value
+  if (!el) return
+  safeDestroyChart(gHistPeChart); gHistPeChart = null
+
+  const ordered = [...gHistPE.value].reverse()
+  const labels  = ordered.map(d => d.label)
+  const values  = ordered.map(d => d.value)
+  const { avg, sigma } = gHistStats.value
+  const N = values.length
+  const upperBand = Array(N).fill(+(avg + sigma).toFixed(2))
+  const lowerBand = Array(N).fill(+(avg - sigma).toFixed(2))
+  const avgLine   = Array(N).fill(+avg.toFixed(2))
+  const g = gc()
+
+  try {
+    gHistPeChart = new ChartJS(el, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { data: upperBand, borderColor: 'transparent', backgroundColor: 'rgba(55,138,221,0.10)', pointRadius: 0, fill: '+1', borderWidth: 0, tension: 0 },
+          { data: lowerBand, borderColor: 'rgba(55,138,221,0.25)', backgroundColor: 'transparent', pointRadius: 0, fill: false, borderWidth: 1, borderDash: [2, 4], tension: 0 },
+          { data: avgLine, borderColor: '#888780', backgroundColor: 'transparent', pointRadius: 0, fill: false, borderWidth: 1.5, borderDash: [5, 4], tension: 0 },
+          { data: values, borderColor: '#378ADD', backgroundColor: 'transparent', pointRadius: 4, pointBackgroundColor: '#378ADD', fill: false, borderWidth: 2, tension: 0.1, spanGaps: false },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => c.datasetIndex === 3 ? c.label + ': ' + c.raw + '×' : null } },
+        },
+        scales: {
+          y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '×' }, title: { display: true, text: 'TTM P/E', font: { size: 11 } } },
+          x: { grid: { color: g }, ticks: { font: { size: 11 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
+// ─── GOOGL EPS vs Capital Gain chart ─────────────────────────
+function renderGOOGLEpsGainChart() {
+  if (!ChartJS) return
+  const el = gEpsGainCanvas.value
+  if (!el) return
+  safeDestroyChart(gEpsGainChart); gEpsGainChart = null
+  const g = gc()
+
+  try {
+    gEpsGainChart = new ChartJS(el, {
+      type: 'bar',
+      data: {
+        labels: GOOGL_EPS_VS_GAIN.map(d => d.year),
+        datasets: [
+          { label: 'EPS gain %', data: GOOGL_EPS_VS_GAIN.map(d => d.eps), backgroundColor: '#378ADD' },
+          { label: 'Capital gain %', data: GOOGL_EPS_VS_GAIN.map(d => d.cap), backgroundColor: '#1D9E75' },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '%' }, title: { display: true, text: 'Annual gain %', font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
+function renderGOOGLCharts() {
+  renderGOOGLProjChart()
+  renderGOOGLHistPEChart()
+  renderGOOGLEpsGainChart()
+}
+
 // ─── Finnhub via server routes (no key on client) ────────────
 const allTickers = computed(() => {
-  const extras = watchlist.value.filter(t => t !== 'NVDA' && t !== 'BX')
-  return ['NVDA', 'BX', ...extras]
+  const extras = watchlist.value.filter(t => t !== 'NVDA' && t !== 'BX' && t !== 'GOOGL')
+  return ['NVDA', 'BX', 'GOOGL', ...extras]
 })
 
 async function fetchQuotes(tickers) {
@@ -730,6 +978,16 @@ async function fetchNVDAMetrics() {
     if (series && series.length >= 8) {
       // Reverse to newest-first so the ref matches NVDA_PE_SEED orientation
       nHistPE.value = [...series].reverse()
+    }
+  } catch { /* keep seed data */ }
+}
+
+async function fetchGOOGLMetrics() {
+  try {
+    const data = await $fetch('/api/finnhub/metrics?symbol=GOOGL')
+    const series = extractFinnhubPESeries(data, 8, 2016)
+    if (series && series.length >= 8) {
+      gHistPE.value = [...series].reverse()
     }
   } catch { /* keep seed data */ }
 }
@@ -792,8 +1050,9 @@ function throttle(fn, ms) {
     }
   }
 }
-const throttledNVDAProj = throttle(() => { if (activeTab.value === 'nvda') renderNVDAProjChart() }, CHART_PRICE_UPDATE_MS)
-const throttledBXProj   = throttle(() => { if (activeTab.value === 'bx')   renderBXProjChart()   }, CHART_PRICE_UPDATE_MS)
+const throttledNVDAProj  = throttle(() => { if (activeTab.value === 'nvda')  renderNVDAProjChart()  }, CHART_PRICE_UPDATE_MS)
+const throttledBXProj    = throttle(() => { if (activeTab.value === 'bx')    renderBXProjChart()    }, CHART_PRICE_UPDATE_MS)
+const throttledGOOGLProj = throttle(() => { if (activeTab.value === 'googl') renderGOOGLProjChart() }, CHART_PRICE_UPDATE_MS)
 
 // ─── Lifecycle ────────────────────────────────────────────────
 onMounted(async () => {
@@ -812,15 +1071,17 @@ onMounted(async () => {
   statusText.value = 'Live (30s)'
   startPolling()
 
-  // Fetch NVDA metrics in background (updates historical chart if Finnhub has enough data)
+  // Fetch metrics in background (updates historical P/E charts if Finnhub has enough data)
   fetchNVDAMetrics()
+  fetchGOOGLMetrics()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkBreakpoint)
   stopPolling()
   ;[nProjChart, nRevChart, nHistPeChart, nEpsGainChart,
-    bProjChart, bDeChart, bHistPdeChart].forEach(safeDestroyChart)
+    bProjChart, bDeChart, bHistPdeChart,
+    gProjChart, gHistPeChart, gEpsGainChart].forEach(safeDestroyChart)
 })
 
 // ─── Watchers ─────────────────────────────────────────────────
@@ -847,10 +1108,20 @@ watch([bDe1, bPay, bG], () => {
 // Price throttle (only proj charts need price)
 watch(nvdaPrice, throttledNVDAProj)
 watch(bxPrice, throttledBXProj)
+watch(googlPrice, throttledGOOGLProj)
+// GOOGL projection
+watch([gEps1, gEps2, gPeMin, gPeMax, gG, gProjZoomed], () => {
+  if (activeTab.value === 'googl') renderGOOGLProjChart()
+})
+// GOOGL historical P/E (updates when Finnhub data arrives)
+watch(gHistPE, () => {
+  if (activeTab.value === 'googl') renderGOOGLHistPEChart()
+}, { deep: true })
 // Tab switch — render newly visible charts
 watch(activeTab, (tab) => {
-  if (tab === 'nvda') renderNVDACharts()
-  if (tab === 'bx')   renderBXCharts()
+  if (tab === 'nvda')  renderNVDACharts()
+  if (tab === 'bx')    renderBXCharts()
+  if (tab === 'googl') renderGOOGLCharts()
 }, { flush: 'post' })
 // Persist watchlist
 watch(watchlist, () => {
@@ -943,6 +1214,7 @@ watch(watchlist, () => {
       <div class="tabs">
         <button class="tab" :class="{ active: activeTab === 'nvda' }" @click="activeTab = 'nvda'">NVDA</button>
         <button class="tab" :class="{ active: activeTab === 'bx' }" @click="activeTab = 'bx'">BX</button>
+        <button class="tab" :class="{ active: activeTab === 'googl' }" @click="activeTab = 'googl'">GOOGL</button>
         <button class="tab" :class="{ active: activeTab === 'watchlist' }" @click="activeTab = 'watchlist'">Watchlist</button>
       </div>
 
@@ -1101,7 +1373,7 @@ watch(watchlist, () => {
 
         <!-- ── EPS drives price card ───────────────────────────── -->
         <div class="card">
-          <div class="card-title">EPS drives price &mdash; historical evidence (FY2017&ndash;FY2020)</div>
+          <div class="card-title">EPS drives price &mdash; historical evidence (FY2017&ndash;FY2026)</div>
           <div class="insight">From FY2017 to present, EPS and stock price CAGR are near-identical (70% vs 72%). Every 1% EPS gain translates to ~0.42% price rise. The multiple is earned, not speculative.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
@@ -1131,6 +1403,7 @@ watch(watchlist, () => {
             <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
           </div>
           <p class="note">FY2019 shows the negative-correlation test: EPS fell &minus;48%, stock fell &minus;31%. Even in drawdowns, price tracks EPS direction.</p>
+          <p class="note">FY2023 exception: GAAP EPS fell again (down-cycle continued), yet the stock surged +239% as the market priced the AI inflection ahead of earnings &mdash; price led EPS by ~12 months. FY2026 is a partial year (YTD through March 30).</p>
         </div>
 
         <!-- NVDA Glossary -->
@@ -1182,6 +1455,49 @@ watch(watchlist, () => {
             <div class="conviction-reason">{{ bConviction.reason }}</div>
             <div class="conviction-context">{{ bConviction.context }}</div>
           </div>
+        </div>
+
+        <!-- ── Historical P/DE card ────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Historical Non-GAAP TTM P/DE &mdash; 46 quarters</div>
+          <div class="insight">Full BX P/DE history from Q4 2014. Amber segments = below 20&times; (historically a strong re-entry signal). Blue band = 22&ndash;29&times; fair range. Dashed amber line = 20&times; buy-zone threshold.</div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
+            <div class="tcard">
+              <div class="tlabel">All-time avg P/DE</div>
+              <div class="tprice">{{ bxHistAvg.toFixed(1) }}&times;</div>
+              <div class="tret">across 46 quarters</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Current P/DE</div>
+              <div class="tprice" :class="bxHistCurrent < 20 ? 'amber' : ''">{{ bxHistCurrent }}&times;</div>
+              <div class="tret">Q4 2025</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">Fair range</div>
+              <div class="tprice">22&ndash;29&times;</div>
+              <div class="tret">sourced from historical analysis</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">Buy-zone touches</div>
+              <div class="tprice">{{ bxHistBelowBuyZone }}&thinsp;/&thinsp;46</div>
+              <div class="tret">quarters below 20&times;</div>
+            </div>
+          </div>
+
+          <div class="bx-hist-note">
+            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of 46 quarters &mdash; historically a strong re-entry signal. Current reading: <strong>{{ bxHistCurrent }}&times;</strong>.
+          </div>
+
+          <div class="chart-wrap" style="height:340px"><canvas ref="bHistPdeCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />P/DE (above 20&times;)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#f59e0b" />P/DE (below 20&times; — buy zone)</span>
+            <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />20&times; threshold</span>
+            <span class="legend-item"><span class="legend-fill" />22&ndash;29&times; fair range</span>
+            <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />All-time avg ({{ bxHistAvg.toFixed(1) }}&times;)</span>
+          </div>
+          <p class="note">22&times;&ndash;29&times; range sourced from 10-year DE growth analysis. Slider defaults set from these bounds.</p>
         </div>
 
         <!-- P/DE Projection -->
@@ -1239,49 +1555,6 @@ watch(watchlist, () => {
           </div>
         </div>
 
-        <!-- ── Historical P/DE card ────────────────────────────── -->
-        <div class="card">
-          <div class="card-title">Historical Non-GAAP TTM P/DE &mdash; 46 quarters</div>
-          <div class="insight">Full BX P/DE history from Q4 2014. Amber segments = below 20&times; (historically a strong re-entry signal). Blue band = 22&ndash;29&times; fair range. Dashed amber line = 20&times; buy-zone threshold.</div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
-            <div class="tcard">
-              <div class="tlabel">All-time avg P/DE</div>
-              <div class="tprice">{{ bxHistAvg.toFixed(1) }}&times;</div>
-              <div class="tret">across 46 quarters</div>
-            </div>
-            <div class="tcard">
-              <div class="tlabel">Current P/DE</div>
-              <div class="tprice" :class="bxHistCurrent < 20 ? 'amber' : ''">{{ bxHistCurrent }}&times;</div>
-              <div class="tret">Q4 2025</div>
-            </div>
-            <div class="tcard hero">
-              <div class="tlabel">Fair range</div>
-              <div class="tprice">22&ndash;29&times;</div>
-              <div class="tret">sourced from historical analysis</div>
-            </div>
-            <div class="tcard hero">
-              <div class="tlabel">Buy-zone touches</div>
-              <div class="tprice">{{ bxHistBelowBuyZone }}&thinsp;/&thinsp;46</div>
-              <div class="tret">quarters below 20&times;</div>
-            </div>
-          </div>
-
-          <div class="bx-hist-note">
-            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of 46 quarters &mdash; historically a strong re-entry signal. Current reading: <strong>{{ bxHistCurrent }}&times;</strong>.
-          </div>
-
-          <div class="chart-wrap" style="height:340px"><canvas ref="bHistPdeCanvas" /></div>
-          <div class="chart-legend">
-            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />P/DE (above 20&times;)</span>
-            <span class="legend-item"><span class="legend-line" style="background:#f59e0b" />P/DE (below 20&times; — buy zone)</span>
-            <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />20&times; threshold</span>
-            <span class="legend-item"><span class="legend-fill" />22&ndash;29&times; fair range</span>
-            <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />All-time avg ({{ bxHistAvg.toFixed(1) }}&times;)</span>
-          </div>
-          <p class="note">22&times;&ndash;29&times; range sourced from 10-year DE growth analysis. Slider defaults set from these bounds.</p>
-        </div>
-
         <!-- BX Glossary -->
         <button class="glossary-toggle" @click="bxGlossaryOpen = !bxGlossaryOpen">
           <span>Key terms &mdash; BX analyzer</span>
@@ -1295,6 +1568,186 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">Total return</span><span class="gterm-def">Price appreciation plus yield (distributions received). For BX, yield is a meaningful part of the investment case.</span></div>
           <div class="gterm"><span class="gterm-name">Buy zone (&lt;20&times;)</span><span class="gterm-def">Historically, P/DE below 20&times; has been a reliable re-entry signal. It has occurred in {{ bxHistBelowBuyZone }} of 46 tracked quarters.</span></div>
           <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future DE discounted to today's dollars.</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ GOOGL TAB ═══════════ -->
+      <div v-show="activeTab === 'googl'" class="space-y-5">
+
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="metric-card">
+            <p class="mc-label">Current price</p>
+            <p class="mc-value">{{ dlr(googlPrice) }}</p>
+            <p class="mc-sub" :class="colCls(googlChg)">{{ absDlr(googlChg) }} ({{ pct(googlChgPct, 2) }})</p>
+          </div>
+          <div class="metric-card">
+            <p class="mc-label">1yr target range</p>
+            <p class="mc-value">{{ g1Range }}</p>
+            <p class="mc-sub">{{ g1RangeSub }}</p>
+          </div>
+          <div class="metric-card">
+            <p class="mc-label">2yr target range</p>
+            <p class="mc-value">{{ g2Range }}</p>
+            <p class="mc-sub">{{ g2RangeSub }}</p>
+          </div>
+          <div class="metric-card">
+            <p class="mc-label">Two-phase DCF floor</p>
+            <p class="mc-value">{{ dlr(gFloor) }}</p>
+            <p class="mc-sub" :class="colCls(gVsFloor)">{{ gVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+          </div>
+        </div>
+
+        <!-- ── Conviction signal ──────────────────────────────────── -->
+        <div v-if="gConviction" class="conviction-card" :class="`conviction-${gConviction.color}`">
+          <div class="conviction-signal">{{ gConviction.signal }}</div>
+          <div class="conviction-body">
+            <div class="conviction-reason">{{ gConviction.reason }}</div>
+            <div class="conviction-context">{{ gConviction.context }}</div>
+          </div>
+        </div>
+
+        <!-- ── Historical P/E card ─────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
+          <div class="insight">±1&sigma; range from the last {{ gHistPE.length }} quarters. Seeded with 7-quarter hardcoded data; overridden by Finnhub if &ge;8 quarters available since 2016. These bounds auto-seed the min/max P/E sliders.</div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
+            <div class="tcard">
+              <div class="tlabel">Avg TTM P/E</div>
+              <div class="tprice">{{ gHistStats.avg.toFixed(1) }}&times;</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Sigma (1&sigma;)</div>
+              <div class="tprice">{{ gHistStats.sigma.toFixed(1) }}</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">&minus;1&sigma; (slider min)</div>
+              <div class="tprice">{{ gHistStats.low.toFixed(1) }}&times;</div>
+              <div class="tret">current slider: {{ gPeMin.toFixed(1) }}&times;</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">+1&sigma; (slider max)</div>
+              <div class="tprice">{{ gHistStats.high.toFixed(1) }}&times;</div>
+              <div class="tret">current slider: {{ gPeMax.toFixed(1) }}&times;</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap" style="height:300px"><canvas ref="gHistPeCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />TTM P/E</span>
+            <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />Avg ({{ gHistStats.avg.toFixed(1) }}&times;)</span>
+            <span class="legend-item"><span class="legend-fill" />±1&sigma; band</span>
+          </div>
+          <p class="note">GOOGL fiscal year = calendar year. P/E has been more stable than NVDA &mdash; 20&ndash;35&times; for most of the post-2017 period, briefly dipping below 20&times; in 2022.</p>
+        </div>
+
+        <!-- ── P/E Projection card ─────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">P/E valuation &mdash; price targets &amp; 10-year projection</div>
+          <div class="insight">Price target = Forward EPS &times; P/E multiple. Sliders default to ±1&sigma; of historical P/E range. Solid lines = 1yr/2yr targets; dotted = extrapolation.</div>
+
+          <div class="section-label">1-year targets</div>
+          <div class="targets">
+            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="colCls(gP1h - googlPrice)">{{ dlr(gP1h) }}</div><div class="tret">{{ pct((gP1h - googlPrice) / googlPrice) }} from today</div></div>
+            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(gP1l - googlPrice)">{{ dlr(gP1l) }}</div><div class="tret">{{ pct((gP1l - googlPrice) / googlPrice) }} from today</div></div>
+          </div>
+          <div class="section-label">2-year targets</div>
+          <div class="targets">
+            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="colCls(gP2h - googlPrice)">{{ dlr(gP2h) }}</div><div class="tret">{{ pct((gP2h - googlPrice) / googlPrice) }} from today</div></div>
+            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(gP2l - googlPrice)">{{ dlr(gP2l) }}</div><div class="tret">{{ pct((gP2l - googlPrice) / googlPrice) }} from today</div></div>
+          </div>
+
+          <div class="chart-toolbar">
+            <button class="zoom-btn" :class="{ active: gProjZoomed }" @click="gProjZoomed = !gProjZoomed">{{ gProjZoomed ? '\u21a9 Full 10yr' : '\uD83D\uDD0D Zoom 1\u20132yr' }}</button>
+          </div>
+          <div class="chart-wrap"><canvas ref="gProjCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#888780" />Today</span>
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />High (solid = targets)</span>
+            <span v-if="!gProjZoomed" class="legend-item"><span class="legend-dash" style="border-color:#378ADD" />High (extrapolated)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Low (solid = targets)</span>
+            <span v-if="!gProjZoomed" class="legend-item"><span class="legend-dash" style="border-color:#1D9E75" />Low (extrapolated)</span>
+          </div>
+          <p class="note">Dotted lines extrapolate using projection growth g and the same P/E range &mdash; not a forecast.</p>
+        </div>
+
+        <!-- ── Two-phase DCF card ─────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
+          <div class="insight">Phase 1 (yr 1&ndash;5): EPS compounding at g5. Phase 2 (yr 6&ndash;10): deceleration at h5. Terminal value = yr-10 EPS &times; 10, discounted. GOOGL's stable margins and buyback program support a lower discount rate than NVDA.</div>
+          <div class="targets">
+            <div class="tcard">
+              <div class="tlabel">Intrinsic floor</div>
+              <div class="tprice">{{ dlr(gFloor) }}</div>
+              <div class="tret">g5 {{ gG5 }}% &rarr; h5 {{ gH5 }}% &rarr; d {{ gD }}%</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Price vs floor</div>
+              <div class="tprice" :class="colCls(gVsFloor)">{{ pct(gVsFloor) }}</div>
+              <div class="tret">{{ gVsFloor >= 0 ? 'Stock below DCF floor' : 'Stock above DCF floor' }}</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Yr-5 EPS (g5)</div>
+              <div class="tprice">{{ dlr(gBaseEPS * Math.pow(1 + gG5 / 100, 5)) }}</div>
+              <div class="tret">from ${{ gBaseEPS.toFixed(2) }} base</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Yr-10 EPS (h5)</div>
+              <div class="tprice">{{ dlr(gBaseEPS * Math.pow(1 + gG5 / 100, 5) * Math.pow(1 + gH5 / 100, 5)) }}</div>
+              <div class="tret">terminal &times; 10</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── EPS drives price card ───────────────────────────── -->
+        <div class="card">
+          <div class="card-title">EPS drives price &mdash; historical evidence (2017&ndash;2025)</div>
+          <div class="insight">GOOGL's EPS and stock price track each other more tightly than NVDA &mdash; higher correlation, beta closer to 1.0. Fiscal year = calendar year, so no lag between EPS reporting period and price return.</div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
+            <div class="tcard hero">
+              <div class="tlabel">2022 test</div>
+              <div class="tprice neg">&minus;21% / &minus;39%</div>
+              <div class="tret">EPS fell, stock overcorrected</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">2021 divergence</div>
+              <div class="tprice">+91% / +65%</div>
+              <div class="tret">EPS led stock &mdash; mkt pre-priced</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">2025 re-rate</div>
+              <div class="tprice pos">+65%</div>
+              <div class="tret">AI momentum + EPS +34%</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Fiscal year end</div>
+              <div class="tprice" style="font-size:15px">December</div>
+              <div class="tret">calendar year &mdash; no offset</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap" style="height:220px"><canvas ref="gEpsGainCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />EPS gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
+          </div>
+          <p class="note">2022: EPS fell &minus;21%, stock fell &minus;39% &mdash; market overcorrected, setting up the +58% rebound in 2023 on +27% EPS growth.</p>
+          <p class="note">2021: EPS surged +91% but stock gained only +65% &mdash; the market had already priced in growth ahead of earnings, mirror image of NVDA&apos;s 2023.</p>
+        </div>
+
+        <!-- GOOGL Glossary -->
+        <button class="glossary-toggle" @click="googlGlossaryOpen = !googlGlossaryOpen">
+          <span>Key terms &mdash; GOOGL analyzer</span>
+          <span class="toggle-arrow" :class="{ open: googlGlossaryOpen }">&blacktriangledown;</span>
+        </button>
+        <div class="glossary-body" :class="{ open: googlGlossaryOpen }">
+          <div class="gterm"><span class="gterm-name">EPS</span><span class="gterm-def">Earnings per share &mdash; net profit divided by shares outstanding.</span></div>
+          <div class="gterm"><span class="gterm-name">Forward EPS</span><span class="gterm-def">Analyst consensus estimate of EPS over the next 12 months.</span></div>
+          <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. GOOGL's range is more stable than NVDA's (20&ndash;35&times; for most of the post-2017 period).</span></div>
+          <div class="gterm"><span class="gterm-name">Two-phase DCF</span><span class="gterm-def">A discounted cash flow model split into a high-growth phase (yr 1&ndash;5 at g5) and a deceleration phase (yr 6&ndash;10 at h5).</span></div>
+          <div class="gterm"><span class="gterm-name">Fiscal year end</span><span class="gterm-def">December 31 &mdash; unlike NVDA (late January), GOOGL's fiscal year aligns with the calendar year. No offset needed between EPS period and stock return period.</span></div>
+          <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum GOOGL should be worth based on future EPS discounted to today's dollars. A margin-of-safety check, not a price target.</span></div>
         </div>
       </div>
 
