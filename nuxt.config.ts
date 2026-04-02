@@ -15,9 +15,9 @@ export default defineNuxtConfig({
     githubToken: process.env.GITHUB_TOKEN,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+    finnhubApiKey: process.env.FINNHUB_API_KEY || '', // server-only — never sent to browser
     public: {
       formspreeEndpoint: process.env.NUXT_PUBLIC_FORMSPREE_ENDPOINT || '',
-      finnhubApiKey: process.env.FINNHUB_API_KEY || '',
     }
   },
   app: {
