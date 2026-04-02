@@ -302,6 +302,38 @@ const nRevEPSTotal = computed(() => nQEPS.value.reduce((a, b) => a + b, 0))
 const nRevQoQ      = computed(() => ((nR4.value / nR1.value) ** (1 / 3) - 1) * 100)
 const nRevHit1T    = computed(() => nRevTotal.value >= 1000)
 
+// NVDA conviction signal — based on current P/E vs historical ±1σ
+const nConviction = computed(() => {
+  const pe = nHistPE.value[0]?.value ?? null
+  if (!pe) return null
+  const { avg, sigma, low, high } = nHistStats.value
+  if (pe < low - sigma) return {
+    signal: 'EXTREME BUY', color: 'emerald',
+    reason: `P/E ${pe.toFixed(1)}× — more than 2σ below avg (${avg.toFixed(1)}×)`,
+    context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
+  }
+  if (pe < low) return {
+    signal: 'STRONG BUY', color: 'emerald',
+    reason: `P/E ${pe.toFixed(1)}× — below the −1σ floor (${low.toFixed(1)}×)`,
+    context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
+  }
+  if (pe < avg) return {
+    signal: 'BUY', color: 'green',
+    reason: `P/E ${pe.toFixed(1)}× — below the historical avg (${avg.toFixed(1)}×)`,
+    context: `Multiple compressed below the long-run average — room to re-rate upward.`,
+  }
+  if (pe <= high) return {
+    signal: 'HOLD / FAIR', color: 'yellow',
+    reason: `P/E ${pe.toFixed(1)}× — within the ±1σ band (${low.toFixed(1)}–${high.toFixed(1)}×)`,
+    context: `Multiple within the normal historical range. Not cheap, not extended.`,
+  }
+  return {
+    signal: 'RICH', color: 'red',
+    reason: `P/E ${pe.toFixed(1)}× — above the +1σ ceiling (${high.toFixed(1)}×)`,
+    context: `Multiple extended beyond the historical high-end. Expect compression risk.`,
+  }
+})
+
 // ─── BX computed ──────────────────────────────────────────────
 const bxPrice   = computed(() => prices['BX'] || 114.52)
 const bxPrev    = computed(() => prevPrices['BX'] || bxPrice.value)
@@ -336,6 +368,31 @@ const bDeYears  = computed(() => {
 })
 const bDistYears = computed(() => bDeYears.value.map(v => +(v * bPay.value / 100).toFixed(2)))
 const bYr3Yield  = computed(() => (bDistYears.value[3] / bxPrice.value) * 100)
+
+// BX conviction signal — based on current P/DE vs fair-range thresholds
+const bConviction = computed(() => {
+  const pde = bxHistCurrent
+  if (pde < 20) return {
+    signal: 'STRONG BUY', color: 'emerald',
+    reason: `P/DE ${pde}× — inside the historical buy zone (< 20×)`,
+    context: `Only ${bxHistBelowBuyZone} of 46 tracked quarters have reached this level. Rare entry.`,
+  }
+  if (pde < 22) return {
+    signal: 'BUY', color: 'green',
+    reason: `P/DE ${pde}× — below the 22× fair-range floor`,
+    context: `Approaching the lower bound of the 22–29× historical fair range.`,
+  }
+  if (pde <= 29) return {
+    signal: 'HOLD / FAIR', color: 'yellow',
+    reason: `P/DE ${pde}× — within the 22–29× fair range`,
+    context: `Multiple within the historically sourced fair-value band.`,
+  }
+  return {
+    signal: 'RICH', color: 'red',
+    reason: `P/DE ${pde}× — above the 29× fair-range ceiling`,
+    context: `Multiple extended beyond historical fair value. Compression risk elevated.`,
+  }
+})
 
 // ─── Watchlist ────────────────────────────────────────────────
 const watchlistRows = computed(() =>
@@ -923,6 +980,15 @@ watch(watchlist, () => {
           </div>
         </div>
 
+        <!-- ── Conviction signal ──────────────────────────────────── -->
+        <div v-if="nConviction" class="conviction-card" :class="`conviction-${nConviction.color}`">
+          <div class="conviction-signal">{{ nConviction.signal }}</div>
+          <div class="conviction-body">
+            <div class="conviction-reason">{{ nConviction.reason }}</div>
+            <div class="conviction-context">{{ nConviction.context }}</div>
+          </div>
+        </div>
+
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
@@ -1016,6 +1082,23 @@ watch(watchlist, () => {
           </div>
         </div>
 
+        <!-- Revenue model -->
+        <div class="card">
+          <div class="card-title">FY2027 revenue model</div>
+          <div class="targets">
+            <div class="tcard"><div class="tlabel">FY2027 revenue</div><div class="tprice" :class="nRevHit1T ? 'pos' : ''">${{ nRevTotal.toFixed(0) }}B</div><div class="tret">{{ nRevHit1T ? 'Meets $1T' : `$${(1000 - nRevTotal).toFixed(0)}B short` }}</div></div>
+            <div class="tcard"><div class="tlabel">FY2027 EPS (est.)</div><div class="tprice">{{ dlr(nRevEPSTotal) }}</div></div>
+            <div class="tcard"><div class="tlabel">Implied P/E today</div><div class="tprice">{{ (nvdaPrice / nRevEPSTotal).toFixed(1) }}&times;</div></div>
+            <div class="tcard"><div class="tlabel">QoQ avg growth</div><div class="tprice">{{ nRevQoQ.toFixed(1) }}%</div></div>
+          </div>
+          <div class="chart-wrap"><canvas ref="nRevCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Revenue ($B)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#BA7517" />Quarterly EPS (right axis)</span>
+          </div>
+          <p class="note">73% gross margin &middot; 18.6% opex &middot; 15.88% tax &middot; 24.432B diluted shares</p>
+        </div>
+
         <!-- ── EPS drives price card ───────────────────────────── -->
         <div class="card">
           <div class="card-title">EPS drives price &mdash; historical evidence (FY2017&ndash;FY2020)</div>
@@ -1048,23 +1131,6 @@ watch(watchlist, () => {
             <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
           </div>
           <p class="note">FY2019 shows the negative-correlation test: EPS fell &minus;48%, stock fell &minus;31%. Even in drawdowns, price tracks EPS direction.</p>
-        </div>
-
-        <!-- Revenue model -->
-        <div class="card">
-          <div class="card-title">FY2027 revenue model</div>
-          <div class="targets">
-            <div class="tcard"><div class="tlabel">FY2027 revenue</div><div class="tprice" :class="nRevHit1T ? 'pos' : ''">${{ nRevTotal.toFixed(0) }}B</div><div class="tret">{{ nRevHit1T ? 'Meets $1T' : `$${(1000 - nRevTotal).toFixed(0)}B short` }}</div></div>
-            <div class="tcard"><div class="tlabel">FY2027 EPS (est.)</div><div class="tprice">{{ dlr(nRevEPSTotal) }}</div></div>
-            <div class="tcard"><div class="tlabel">Implied P/E today</div><div class="tprice">{{ (nvdaPrice / nRevEPSTotal).toFixed(1) }}&times;</div></div>
-            <div class="tcard"><div class="tlabel">QoQ avg growth</div><div class="tprice">{{ nRevQoQ.toFixed(1) }}%</div></div>
-          </div>
-          <div class="chart-wrap"><canvas ref="nRevCanvas" /></div>
-          <div class="chart-legend">
-            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Revenue ($B)</span>
-            <span class="legend-item"><span class="legend-line" style="background:#BA7517" />Quarterly EPS (right axis)</span>
-          </div>
-          <p class="note">73% gross margin &middot; 18.6% opex &middot; 15.88% tax &middot; 24.432B diluted shares</p>
         </div>
 
         <!-- NVDA Glossary -->
@@ -1109,6 +1175,15 @@ watch(watchlist, () => {
           </div>
         </div>
 
+        <!-- ── Conviction signal ──────────────────────────────────── -->
+        <div v-if="bConviction" class="conviction-card" :class="`conviction-${bConviction.color}`">
+          <div class="conviction-signal">{{ bConviction.signal }}</div>
+          <div class="conviction-body">
+            <div class="conviction-reason">{{ bConviction.reason }}</div>
+            <div class="conviction-context">{{ bConviction.context }}</div>
+          </div>
+        </div>
+
         <!-- P/DE Projection -->
         <div class="card">
           <div class="card-title">P/DE valuation &mdash; price targets &amp; 10-year projection</div>
@@ -1145,6 +1220,22 @@ watch(watchlist, () => {
           <div class="targets">
             <div class="tcard"><div class="tlabel">Intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div><div class="tret">what future DE is worth today</div></div>
             <div class="tcard"><div class="tlabel">Price vs floor</div><div class="tprice" :class="colCls(bVsFloor)">{{ pct(bVsFloor) }}</div><div class="tret">{{ bVsFloor >= 0 ? 'Appears undervalued vs floor' : 'Trades above DCF floor' }}</div></div>
+          </div>
+        </div>
+
+        <!-- BX DE growth -->
+        <div class="card">
+          <div class="card-title">DE growth projection &mdash; 3-year outlook</div>
+          <div class="targets">
+            <div class="tcard"><div class="tlabel">Yr 3 DE/share</div><div class="tprice">{{ dlr(bDeYears[3]) }}</div><div class="tret">{{ pct(Math.pow(1 + bG / 100, 3) - 1) }} cumulative growth</div></div>
+            <div class="tcard"><div class="tlabel">Yr 3 distribution</div><div class="tprice">{{ dlr(bDistYears[3]) }}</div><div class="tret">{{ bYr3Yield.toFixed(1) }}% yield on today's price</div></div>
+            <div class="tcard"><div class="tlabel">Yr 1 yield</div><div class="tprice">{{ (bYld1 * 100).toFixed(2) }}%</div><div class="tret">{{ dlr(bPay / 100 * bDe1) }}/share</div></div>
+            <div class="tcard"><div class="tlabel">10yr intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div></div>
+          </div>
+          <div class="chart-wrap"><canvas ref="bDeCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />DE per share</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Distribution per share (right axis)</span>
           </div>
         </div>
 
@@ -1189,22 +1280,6 @@ watch(watchlist, () => {
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />All-time avg ({{ bxHistAvg.toFixed(1) }}&times;)</span>
           </div>
           <p class="note">22&times;&ndash;29&times; range sourced from 10-year DE growth analysis. Slider defaults set from these bounds.</p>
-        </div>
-
-        <!-- BX DE growth -->
-        <div class="card">
-          <div class="card-title">DE growth projection &mdash; 3-year outlook</div>
-          <div class="targets">
-            <div class="tcard"><div class="tlabel">Yr 3 DE/share</div><div class="tprice">{{ dlr(bDeYears[3]) }}</div><div class="tret">{{ pct(Math.pow(1 + bG / 100, 3) - 1) }} cumulative growth</div></div>
-            <div class="tcard"><div class="tlabel">Yr 3 distribution</div><div class="tprice">{{ dlr(bDistYears[3]) }}</div><div class="tret">{{ bYr3Yield.toFixed(1) }}% yield on today's price</div></div>
-            <div class="tcard"><div class="tlabel">Yr 1 yield</div><div class="tprice">{{ (bYld1 * 100).toFixed(2) }}%</div><div class="tret">{{ dlr(bPay / 100 * bDe1) }}/share</div></div>
-            <div class="tcard"><div class="tlabel">10yr intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div></div>
-          </div>
-          <div class="chart-wrap"><canvas ref="bDeCanvas" /></div>
-          <div class="chart-legend">
-            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />DE per share</span>
-            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Distribution per share (right axis)</span>
-          </div>
         </div>
 
         <!-- BX Glossary -->
@@ -1349,6 +1424,21 @@ tr:hover td { background: var(--c-bg2); }
 .section-label { font-size: 11px; font-weight: 500; color: var(--c-text2); text-transform: uppercase; letter-spacing: 0.05em; margin: 1.25rem 0 0.75rem; }
 .bx-hist-note { background: rgba(245,158,11,0.08); border-radius: var(--r-md); padding: 10px 14px; font-size: 12px; color: #fbbf24; margin-bottom: 0.75rem; line-height: 1.6; }
 .bx-hist-note strong { font-weight: 600; }
+
+/* ─── Conviction signal ──────────────────────────────────────── */
+.conviction-card { display: flex; align-items: center; gap: 1rem; padding: 14px 18px; border-radius: var(--r-md); border: 1px solid; }
+.conviction-card.conviction-emerald { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.35); }
+.conviction-card.conviction-green   { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.35); }
+.conviction-card.conviction-yellow  { background: rgba(234,179,8,0.08);  border-color: rgba(234,179,8,0.35); }
+.conviction-card.conviction-red     { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.35); }
+.conviction-signal { font-size: 17px; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+.conviction-emerald .conviction-signal { color: #34d399; }
+.conviction-green   .conviction-signal { color: #4ade80; }
+.conviction-yellow  .conviction-signal { color: #facc15; }
+.conviction-red     .conviction-signal { color: #f87171; }
+.conviction-body { flex: 1; min-width: 0; }
+.conviction-reason  { font-size: 13px; font-weight: 500; color: var(--c-text); line-height: 1.4; }
+.conviction-context { font-size: 11.5px; color: var(--c-text2); margin-top: 3px; line-height: 1.4; }
 
 /* ─── Glossary ───────────────────────────────────────────────── */
 .glossary-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--c-bg2); border: none; border-radius: var(--r-md); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--c-text2); transition: background 0.15s; }
