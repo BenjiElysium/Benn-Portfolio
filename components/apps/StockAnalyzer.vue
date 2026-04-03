@@ -9,9 +9,9 @@ import {
 
 // ─── Chart.js (dynamic import — SSR-safe) ─────────────────────
 let ChartJS = null
-let nProjChart = null, nRevChart = null
+let nProjChart = null, nRevChart = null, nDcfChart = null
 let bProjChart = null, bDeChart = null
-let gProjChart = null, gHistPeChart = null, gEpsGainChart = null
+let gProjChart = null, gRevChart = null, gHistPeChart = null, gEpsGainChart = null, gDcfChart = null
 let nHistPeChart = null, nEpsGainChart = null, bHistPdeChart = null
 
 // API key now server-only — all Finnhub calls go through /api/finnhub/*
@@ -264,6 +264,11 @@ const gG5      = ref(20)
 const gH5      = ref(12)
 const gD       = ref(10)
 const gBaseEPS = ref(10.81)  // 2025 actual EPS
+// Revenue model (FY2026 = calendar 2026)
+const gR1 = ref(90)    // Q1 Jan–Mar 2026
+const gR2 = ref(97)    // Q2 Apr–Jun 2026
+const gR3 = ref(103)   // Q3 Jul–Sep 2026
+const gR4 = ref(110)   // Q4 Oct–Dec 2026
 
 const googlSliders = [
   {
@@ -283,6 +288,15 @@ const googlSliders = [
       { label: 'Yr 1–5 growth (g5)',  model: gG5,      min: 5,  max: 50,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
       { label: 'Yr 6–10 growth (h5)', model: gH5,      min: 3,  max: 30,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
       { label: 'Discount rate d',     model: gD,       min: 5,  max: 15,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
+    ],
+  },
+  {
+    section: 'FY2026 Revenue Model',
+    items: [
+      { label: 'Q1 Jan–Mar 2026 ($B)', model: gR1, min: 60,  max: 150, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
+      { label: 'Q2 Apr–Jun 2026 ($B)', model: gR2, min: 60,  max: 160, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
+      { label: 'Q3 Jul–Sep 2026 ($B)', model: gR3, min: 60,  max: 170, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
+      { label: 'Q4 Oct–Dec 2026 ($B)', model: gR4, min: 60,  max: 180, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
     ],
   },
 ]
@@ -327,12 +341,15 @@ const nProjCanvas    = ref(null)
 const nRevCanvas     = ref(null)
 const nHistPeCanvas  = ref(null)
 const nEpsGainCanvas = ref(null)
+const nDcfCanvas     = ref(null)
 const bProjCanvas    = ref(null)
 const bDeCanvas      = ref(null)
 const bHistPdeCanvas = ref(null)
 const gProjCanvas    = ref(null)
+const gRevCanvas     = ref(null)
 const gHistPeCanvas  = ref(null)
 const gEpsGainCanvas = ref(null)
+const gDcfCanvas     = ref(null)
 
 // ─── Misc state ───────────────────────────────────────────────
 const nvdaGlossaryOpen  = ref(false)
@@ -501,6 +518,18 @@ const gFloor = computed(() => computeTwoPhaseDCF({
   terminalMultiplier: 10,
 }))
 const gVsFloor = computed(() => (gFloor.value - googlPrice.value) / googlPrice.value)
+
+// Revenue model — FY2026 (calendar 2026)
+// Effective net margin from Q4 2025 actuals: ~$2.15 EPS on $96.5B rev → ~27.4% net
+// gm=0.58, ox=0.449 → operating margin 31.9%, tax 14%, 12.3B shares
+const gRevs        = computed(() => [gR1.value, gR2.value, gR3.value, gR4.value])
+const gRevTotal    = computed(() => gRevs.value.reduce((a, b) => a + b, 0))
+const gQEPS        = computed(() => {
+  const gm = 0.58, ox = 0.449, tx = 0.14, sh = 12.3
+  return gRevs.value.map(r => (r * gm * (1 - ox)) * (1 - tx) / sh)
+})
+const gRevEPSTotal = computed(() => gQEPS.value.reduce((a, b) => a + b, 0))
+const gRevQoQ      = computed(() => ((gR4.value / gR1.value) ** (1 / 3) - 1) * 100)
 
 const gHistStats = computed(() => {
   const chronological = [...gHistPE.value].reverse()
@@ -711,11 +740,95 @@ function renderNVDAEpsGainChart() {
   } catch { /* give up */ }
 }
 
+// ─── NVDA DCF EPS growth path chart ──────────────────────────
+function renderNVDADcfChart() {
+  if (!ChartJS) return
+  const el = nDcfCanvas.value
+  if (!el) return
+  safeDestroyChart(nDcfChart); nDcfChart = null
+
+  const base = nBaseEPS.value
+  const g5 = nG5.value / 100
+  const h5 = nH5.value / 100
+  const d  = nD.value  / 100
+
+  const years = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  const epsAt = yr => {
+    if (yr <= 5) return base * Math.pow(1 + g5, yr)
+    return base * Math.pow(1 + g5, 5) * Math.pow(1 + h5, yr - 5)
+  }
+
+  const phase1 = years.map(yr => yr <= 5 ? +epsAt(yr).toFixed(2) : null)
+  const phase2 = years.map(yr => yr >= 5 ? +epsAt(yr).toFixed(2) : null)
+  const pvLine = years.map(yr => +(epsAt(yr) / Math.pow(1 + d, yr)).toFixed(2))
+  const g = gc()
+
+  try {
+    nDcfChart = new ChartJS(el, {
+      type: 'line',
+      data: {
+        labels: years.map(yr => `Yr ${yr}`),
+        datasets: [
+          {
+            label: 'Phase 1 EPS (g5)',
+            data: phase1,
+            borderColor: '#378ADD',
+            backgroundColor: 'transparent',
+            pointRadius: years.map(yr => (yr === 0 || yr === 5) ? 5 : 3),
+            pointBackgroundColor: '#378ADD',
+            borderWidth: 2.5,
+            tension: 0.2,
+            spanGaps: false,
+          },
+          {
+            label: 'Phase 2 EPS (h5)',
+            data: phase2,
+            borderColor: '#1D9E75',
+            backgroundColor: 'transparent',
+            pointRadius: years.map(yr => (yr === 5 || yr === 10) ? 5 : 3),
+            pointBackgroundColor: '#1D9E75',
+            borderWidth: 2.5,
+            tension: 0.2,
+            spanGaps: false,
+          },
+          {
+            label: 'PV at d%',
+            data: pvLine,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            tension: 0.2,
+          },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: $${c.raw}` } },
+        },
+        scales: {
+          y: {
+            grid: { color: g },
+            ticks: { font: { size: 11 }, callback: v => '$' + v },
+            title: { display: true, text: 'EPS ($)', font: { size: 11 } },
+          },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
 function renderNVDACharts() {
   renderNVDAProjChart()
   renderNVDARevChart()
   renderNVDAHistPEChart()
   renderNVDAEpsGainChart()
+  renderNVDADcfChart()
 }
 
 // ─── BX projection chart ──────────────────────────────────────
@@ -851,6 +964,47 @@ function renderBXCharts() {
   renderBXHistPDEChart()
 }
 
+// ─── GOOGL revenue chart ─────────────────────────────────────
+function renderGOOGLRevChart() {
+  if (!ChartJS) return
+  const el = gRevCanvas.value
+  if (!el) return
+  const revData = gRevs.value.map(v => +v.toFixed(1))
+  const epsData = gQEPS.value.map(v => +v.toFixed(2))
+  const g = gc()
+
+  if (canPatchBarChart(gRevChart, el)) {
+    try {
+      gRevChart.data.datasets[0].data = revData
+      gRevChart.data.datasets[1].data = epsData
+      gRevChart.options.scales.y.grid.color = g
+      gRevChart.update(); return
+    } catch { /* fall through */ }
+  }
+  safeDestroyChart(gRevChart); gRevChart = null
+  try {
+    gRevChart = new ChartJS(el, {
+      type: 'bar',
+      data: {
+        labels: ['Q1 Jan26', 'Q2 Apr26', 'Q3 Jul26', 'Q4 Oct26'],
+        datasets: [
+          { label: 'Revenue', data: revData, backgroundColor: '#378ADD', yAxisID: 'y' },
+          { label: 'EPS', data: epsData, type: 'line', borderColor: '#BA7517', backgroundColor: 'transparent', pointBackgroundColor: '#BA7517', pointRadius: 5, yAxisID: 'y2' },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y:  { grid: { color: g }, title: { display: true, text: 'Revenue ($B)', font: { size: 11 } }, ticks: { font: { size: 11 } } },
+          y2: { position: 'right', title: { display: true, text: 'EPS ($)', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { drawOnChartArea: false } },
+          x:  { grid: { display: false }, ticks: { font: { size: 11 }, autoSkip: false } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
 // ─── GOOGL projection chart ───────────────────────────────────
 function renderGOOGLProjChart() {
   if (!ChartJS) return
@@ -948,10 +1102,106 @@ function renderGOOGLEpsGainChart() {
   } catch { /* give up */ }
 }
 
+// ─── GOOGL DCF EPS growth path chart ─────────────────────────
+// Continuous line yr 0–10. Phase 1 (blue, yr 0–5) and Phase 2 (teal, yr 5–10)
+// as separate datasets that share yr 5 to connect. Amber fill = PV of each
+// year's EPS at d — the gap between EPS and PV widens with higher d.
+function renderGOOGLDcfChart() {
+  if (!ChartJS) return
+  const el = gDcfCanvas.value
+  if (!el) return
+  safeDestroyChart(gDcfChart); gDcfChart = null
+
+  const base = gBaseEPS.value
+  const g5 = gG5.value / 100
+  const h5 = gH5.value / 100
+  const d  = gD.value  / 100
+
+  const years = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  const epsAt = yr => {
+    if (yr <= 5) return base * Math.pow(1 + g5, yr)
+    return base * Math.pow(1 + g5, 5) * Math.pow(1 + h5, yr - 5)
+  }
+
+  // Phase 1: yr 0–5 visible, then null (no line drawn into phase 2)
+  const phase1 = years.map(yr => yr <= 5 ? +epsAt(yr).toFixed(2) : null)
+  // Phase 2: null up to yr 4, then yr 5–10 (shares yr 5 to connect segments)
+  const phase2 = years.map(yr => yr >= 5 ? +epsAt(yr).toFixed(2) : null)
+  // PV line: EPS discounted at d for each year
+  const pvLine = years.map(yr => +(epsAt(yr) / Math.pow(1 + d, yr)).toFixed(2))
+
+  const g = gc()
+
+  try {
+    gDcfChart = new ChartJS(el, {
+      type: 'line',
+      data: {
+        labels: years.map(yr => `Yr ${yr}`),
+        datasets: [
+          {
+            label: 'Phase 1 EPS (g5)',
+            data: phase1,
+            borderColor: '#378ADD',
+            backgroundColor: 'transparent',
+            pointRadius: years.map(yr => (yr === 0 || yr === 5) ? 5 : 3),
+            pointBackgroundColor: '#378ADD',
+            borderWidth: 2.5,
+            tension: 0.2,
+            spanGaps: false,
+          },
+          {
+            label: 'Phase 2 EPS (h5)',
+            data: phase2,
+            borderColor: '#1D9E75',
+            backgroundColor: 'transparent',
+            pointRadius: years.map(yr => (yr === 5 || yr === 10) ? 5 : 3),
+            pointBackgroundColor: '#1D9E75',
+            borderWidth: 2.5,
+            tension: 0.2,
+            spanGaps: false,
+          },
+          {
+            label: 'PV at d%',
+            data: pvLine,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            tension: 0.2,
+          },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: c => `${c.dataset.label}: $${c.raw}`,
+            },
+          },
+        },
+        scales: {
+          y: {
+            grid: { color: g },
+            ticks: { font: { size: 11 }, callback: v => '$' + v },
+            title: { display: true, text: 'EPS ($)', font: { size: 11 } },
+          },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
 function renderGOOGLCharts() {
+  renderGOOGLRevChart()
   renderGOOGLProjChart()
   renderGOOGLHistPEChart()
   renderGOOGLEpsGainChart()
+  renderGOOGLDcfChart()
 }
 
 // ─── Finnhub via server routes (no key on client) ────────────
@@ -1079,9 +1329,9 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkBreakpoint)
   stopPolling()
-  ;[nProjChart, nRevChart, nHistPeChart, nEpsGainChart,
+  ;[nProjChart, nRevChart, nHistPeChart, nEpsGainChart, nDcfChart,
     bProjChart, bDeChart, bHistPdeChart,
-    gProjChart, gHistPeChart, gEpsGainChart].forEach(safeDestroyChart)
+    gProjChart, gRevChart, gHistPeChart, gEpsGainChart, gDcfChart].forEach(safeDestroyChart)
 })
 
 // ─── Watchers ─────────────────────────────────────────────────
@@ -1092,6 +1342,10 @@ watch([nEps1, nEps2, nPeMin, nPeMax, nG, nProjZoomed], () => {
 // NVDA revenue model
 watch([nR1, nR2, nR3, nR4], () => {
   if (activeTab.value === 'nvda') renderNVDARevChart()
+})
+// NVDA DCF chart
+watch([nBaseEPS, nG5, nH5, nD], () => {
+  if (activeTab.value === 'nvda') renderNVDADcfChart()
 })
 // NVDA historical P/E (updates when Finnhub data arrives)
 watch(nHistPE, () => {
@@ -1109,6 +1363,10 @@ watch([bDe1, bPay, bG], () => {
 watch(nvdaPrice, throttledNVDAProj)
 watch(bxPrice, throttledBXProj)
 watch(googlPrice, throttledGOOGLProj)
+// GOOGL revenue model
+watch([gR1, gR2, gR3, gR4], () => {
+  if (activeTab.value === 'googl') renderGOOGLRevChart()
+})
 // GOOGL projection
 watch([gEps1, gEps2, gPeMin, gPeMax, gG, gProjZoomed], () => {
   if (activeTab.value === 'googl') renderGOOGLProjChart()
@@ -1117,6 +1375,10 @@ watch([gEps1, gEps2, gPeMin, gPeMax, gG, gProjZoomed], () => {
 watch(gHistPE, () => {
   if (activeTab.value === 'googl') renderGOOGLHistPEChart()
 }, { deep: true })
+// GOOGL DCF chart
+watch([gBaseEPS, gG5, gH5, gD], () => {
+  if (activeTab.value === 'googl') renderGOOGLDcfChart()
+})
 // Tab switch — render newly visible charts
 watch(activeTab, (tab) => {
   if (tab === 'nvda')  renderNVDACharts()
@@ -1329,7 +1591,7 @@ watch(watchlist, () => {
         <!-- ── Two-phase DCF card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">Phase 1 (yr 1&ndash;5): high-growth EPS compounding at g5. Phase 2 (yr 6&ndash;10): deceleration at h5. Terminal value = yr-10 EPS &times; 10, discounted. Discount rate set at 12% &mdash; the most conservative analyst benchmark. Adjust all three in the sidebar.</div>
+          <div class="insight">Phase 1 (yr 0&ndash;5): EPS compounds at g5. Phase 2 (yr 5&ndash;10): decelerates at h5. The amber fill shows each year&apos;s EPS discounted at rate d &mdash; the gap between the EPS line and the fill is the &ldquo;time cost of money.&rdquo; Terminal value = yr-10 EPS &times; 10, discounted back to today.</div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -1349,9 +1611,16 @@ watch(watchlist, () => {
             <div class="tcard">
               <div class="tlabel">Yr-10 EPS (h5)</div>
               <div class="tprice">{{ dlr(nBaseEPS * Math.pow(1 + nG5 / 100, 5) * Math.pow(1 + nH5 / 100, 5)) }}</div>
-              <div class="tret">terminal × 10</div>
+              <div class="tret">terminal &times; 10</div>
             </div>
           </div>
+          <div class="chart-wrap"><canvas ref="nDcfCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Phase 1 EPS &mdash; g5 (yr 0&ndash;5)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Phase 2 EPS &mdash; h5 (yr 5&ndash;10)</span>
+            <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />PV at d% (filled below)</span>
+          </div>
+          <p class="note">The amber fill shows each year&apos;s EPS discounted to present value at rate d. The gap between the EPS line and the fill widens with higher d &mdash; that compression is what sets the intrinsic floor.</p>
         </div>
 
         <!-- Revenue model -->
@@ -1674,7 +1943,7 @@ watch(watchlist, () => {
         <!-- ── Two-phase DCF card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">Phase 1 (yr 1&ndash;5): EPS compounding at g5. Phase 2 (yr 6&ndash;10): deceleration at h5. Terminal value = yr-10 EPS &times; 10, discounted. GOOGL's stable margins and buyback program support a lower discount rate than NVDA.</div>
+          <div class="insight">Phase 1 (yr 0&ndash;5): EPS compounds at g5. Phase 2 (yr 5&ndash;10): decelerates at h5. The amber fill shows each year&apos;s EPS discounted at rate d &mdash; the gap between the EPS line and the fill is the &ldquo;time cost of money.&rdquo; Terminal value = yr-10 EPS &times; 10, discounted back to today.</div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -1697,6 +1966,30 @@ watch(watchlist, () => {
               <div class="tret">terminal &times; 10</div>
             </div>
           </div>
+          <div class="chart-wrap"><canvas ref="gDcfCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Phase 1 EPS &mdash; g5 (yr 0&ndash;5)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Phase 2 EPS &mdash; h5 (yr 5&ndash;10)</span>
+            <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />PV at d% (filled below)</span>
+          </div>
+          <p class="note">The amber fill shows each year&apos;s EPS discounted to present value at rate d. The gap between the EPS line and the fill widens with higher d &mdash; that compression is what sets the intrinsic floor.</p>
+        </div>
+
+        <!-- Revenue model -->
+        <div class="card">
+          <div class="card-title">FY2026 revenue model</div>
+          <div class="targets">
+            <div class="tcard"><div class="tlabel">FY2026 revenue</div><div class="tprice">${{ gRevTotal.toFixed(0) }}B</div><div class="tret">calendar year 2026</div></div>
+            <div class="tcard"><div class="tlabel">FY2026 EPS (est.)</div><div class="tprice">{{ dlr(gRevEPSTotal) }}</div></div>
+            <div class="tcard"><div class="tlabel">Implied P/E today</div><div class="tprice">{{ (googlPrice / gRevEPSTotal).toFixed(1) }}&times;</div></div>
+            <div class="tcard"><div class="tlabel">QoQ avg growth</div><div class="tprice">{{ gRevQoQ.toFixed(1) }}%</div></div>
+          </div>
+          <div class="chart-wrap"><canvas ref="gRevCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Revenue ($B)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#BA7517" />Quarterly EPS (right axis)</span>
+          </div>
+          <p class="note">58% gross margin &middot; 44.9% opex/gross &middot; 14% tax &middot; 12.3B diluted shares. Calibrated to Q4 2025 actuals ($96.5B rev, $2.15 EPS).</p>
         </div>
 
         <!-- ── EPS drives price card ───────────────────────────── -->
