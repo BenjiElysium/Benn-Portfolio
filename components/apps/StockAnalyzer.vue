@@ -70,9 +70,16 @@ const _ss = _seedStats()
 
 const nHistPE = ref([...NVDA_PE_SEED])  // may be replaced with Finnhub data
 
-// ─── BX Historical P/DE data (static — Finnhub doesn't provide this) ─────────
+// ─── BX Historical P/DE data (static quarterly base + live current point) ────
+// Finnhub supplies the live price. BX distributable earnings come from company
+// filings because Finnhub basic-financials does not expose non-GAAP DE/share.
+const BX_LATEST_DE_SOURCE = {
+  label: 'LTM Q1 2026',
+  dePerShare: 5.84,
+  source: 'Blackstone Q1 2026 earnings release',
+}
 const BX_HIST_PDE = [
-  { label: 'Q4 2025', value: 18.48 },
+  { label: 'Q4 2025', value: 27.36 },
   { label: 'Q3 2025', value: 27.64 },
   { label: 'Q2 2025', value: 30.96 },
   { label: 'Q1 2025', value: 29.84 },
@@ -118,11 +125,6 @@ const BX_HIST_PDE = [
   { label: 'Q1 2015', value: 12.19 },
   { label: 'Q4 2014', value: 12.43 },
 ]
-// Pre-computed stats (static data)
-const _bxVals = BX_HIST_PDE.map(d => d.value)
-const bxHistAvg = _bxVals.reduce((a, b) => a + b, 0) / _bxVals.length
-const bxHistBelowBuyZone = _bxVals.filter(v => v < 20).length
-const bxHistCurrent = BX_HIST_PDE[0].value
 
 // ─── EPS vs Capital Gain historical evidence ──────────────────
 const EPS_VS_GAIN = [
@@ -440,6 +442,20 @@ const bxPrev    = computed(() => prevPrices['BX'] || bxPrice.value)
 const bxChg     = computed(() => bxPrice.value - bxPrev.value)
 const bxChgPct  = computed(() => bxChg.value / bxPrev.value)
 
+const bxQuarterCount = BX_HIST_PDE.length
+const bxCurrentPde = computed(() => +(bxPrice.value / BX_LATEST_DE_SOURCE.dePerShare).toFixed(2))
+const bxHistPdeSeries = computed(() => [
+  { label: 'Current', value: bxCurrentPde.value, isLive: true },
+  ...BX_HIST_PDE,
+])
+const bxHistStats = computed(() => {
+  const values = BX_HIST_PDE.map(d => d.value)
+  return computeHistoricalStats(values, { buyZoneThreshold: 20 })
+})
+const bxHistAvg = computed(() => bxHistStats.value.avg)
+const bxHistBelowBuyZone = computed(() => bxHistStats.value.belowBuyZone)
+const bxCurrentBelowBuyZone = computed(() => bxCurrentPde.value < 20)
+
 const bP1h = computed(() => bDe1.value * bPMax.value)
 const bP1l = computed(() => bDe1.value * bPMin.value)
 const bP2h = computed(() => bDe2.value * bPMax.value)
@@ -471,11 +487,11 @@ const bYr3Yield  = computed(() => (bDistYears.value[3] / bxPrice.value) * 100)
 
 // BX conviction signal — based on current P/DE vs fair-range thresholds
 const bConviction = computed(() => {
-  const pde = bxHistCurrent
+  const pde = bxCurrentPde.value
   if (pde < 20) return {
     signal: 'STRONG BUY', color: 'emerald',
     reason: `P/DE ${pde}× — inside the historical buy zone (< 20×)`,
-    context: `Only ${bxHistBelowBuyZone} of 46 tracked quarters have reached this level. Rare entry.`,
+    context: `Only ${bxHistBelowBuyZone.value} of ${bxQuarterCount} tracked quarters have reached this level. Rare entry.`,
   }
   if (pde < 22) return {
     signal: 'BUY', color: 'green',
@@ -678,6 +694,7 @@ function renderNVDAHistPEChart() {
   const lowerBand = Array(N).fill(+(avg - sigma).toFixed(2))
   const avgLine   = Array(N).fill(+avg.toFixed(2))
   const g = gc()
+  const currentPriceLabel = dlr(nvdaPrice.value)
 
   try {
     nHistPeChart = new ChartJS(el, {
@@ -699,7 +716,20 @@ function renderNVDAHistPEChart() {
         animation: false, responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: c => c.datasetIndex === 3 ? c.label + ': ' + c.raw + '×' : null } },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                if (c.datasetIndex !== 3) return null
+                return c.dataIndex === values.length - 1
+                  ? `Current: ${c.raw}×`
+                  : `${c.label}: ${c.raw}×`
+              },
+              afterLabel: c => {
+                if (c.datasetIndex !== 3 || c.dataIndex !== values.length - 1) return null
+                return `Price: ${currentPriceLabel}`
+              },
+            },
+          },
         },
         scales: {
           y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '×' }, title: { display: true, text: 'TTM P/E', font: { size: 11 } } },
@@ -901,18 +931,20 @@ function renderBXHistPDEChart() {
   if (!el) return
   safeDestroyChart(bHistPdeChart); bHistPdeChart = null
 
-  // Chronological order (oldest left)
-  const ordered  = [...BX_HIST_PDE].reverse()
+  // Chronological order (oldest left), with a live current point at far right.
+  const ordered  = [...bxHistPdeSeries.value].reverse()
   const labels   = ordered.map(d => d.label)
   const values   = ordered.map(d => d.value)
   const N        = values.length
   const g        = gc()
+  const currentPriceLabel = dlr(bxPrice.value)
+  const currentDeLabel = dlr(BX_LATEST_DE_SOURCE.dePerShare)
 
   // Fair range band (22–29×) and buy-zone line (20×)
   const fairHigh  = Array(N).fill(29)
   const fairLow   = Array(N).fill(22)
   const buyZone   = Array(N).fill(20)
-  const avgLine   = Array(N).fill(+bxHistAvg.toFixed(2))
+  const avgLine   = Array(N).fill(+bxHistAvg.value.toFixed(2))
 
   try {
     bHistPdeChart = new ChartJS(el, {
@@ -932,7 +964,8 @@ function renderBXHistPDEChart() {
           {
             data: values,
             borderWidth: 2,
-            pointRadius: 3,
+            pointRadius: ordered.map(d => d.isLive ? 5 : 3),
+            pointHoverRadius: ordered.map(d => d.isLive ? 7 : 5),
             fill: false,
             tension: 0.1,
             spanGaps: false,
@@ -947,7 +980,25 @@ function renderBXHistPDEChart() {
         animation: false, responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: c => c.datasetIndex === 4 ? c.label + ': ' + c.raw + '×' : null } },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                if (c.datasetIndex !== 4) return null
+                const point = ordered[c.dataIndex]
+                if (point?.isLive) return `Current: ${c.raw}×`
+                return `${c.label}: ${c.raw}×`
+              },
+              afterLabel: c => {
+                if (c.datasetIndex !== 4) return null
+                const point = ordered[c.dataIndex]
+                if (!point?.isLive) return null
+                return [
+                  `Price: ${currentPriceLabel}`,
+                  `DE/share: ${currentDeLabel} (${BX_LATEST_DE_SOURCE.label})`,
+                ]
+              },
+            },
+          },
         },
         scales: {
           y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '×' }, title: { display: true, text: 'P/DE', font: { size: 11 } }, min: 0 },
@@ -1044,6 +1095,7 @@ function renderGOOGLHistPEChart() {
   const lowerBand = Array(N).fill(+(avg - sigma).toFixed(2))
   const avgLine   = Array(N).fill(+avg.toFixed(2))
   const g = gc()
+  const currentPriceLabel = dlr(googlPrice.value)
 
   try {
     gHistPeChart = new ChartJS(el, {
@@ -1061,7 +1113,20 @@ function renderGOOGLHistPEChart() {
         animation: false, responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: c => c.datasetIndex === 3 ? c.label + ': ' + c.raw + '×' : null } },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                if (c.datasetIndex !== 3) return null
+                return c.dataIndex === values.length - 1
+                  ? `Current: ${c.raw}×`
+                  : `${c.label}: ${c.raw}×`
+              },
+              afterLabel: c => {
+                if (c.datasetIndex !== 3 || c.dataIndex !== values.length - 1) return null
+                return `Price: ${currentPriceLabel}`
+              },
+            },
+          },
         },
         scales: {
           y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '×' }, title: { display: true, text: 'TTM P/E', font: { size: 11 } } },
@@ -1300,9 +1365,21 @@ function throttle(fn, ms) {
     }
   }
 }
-const throttledNVDAProj  = throttle(() => { if (activeTab.value === 'nvda')  renderNVDAProjChart()  }, CHART_PRICE_UPDATE_MS)
-const throttledBXProj    = throttle(() => { if (activeTab.value === 'bx')    renderBXProjChart()    }, CHART_PRICE_UPDATE_MS)
-const throttledGOOGLProj = throttle(() => { if (activeTab.value === 'googl') renderGOOGLProjChart() }, CHART_PRICE_UPDATE_MS)
+const throttledNVDAPriceCharts = throttle(() => {
+  if (activeTab.value !== 'nvda') return
+  renderNVDAProjChart()
+  renderNVDAHistPEChart()
+}, CHART_PRICE_UPDATE_MS)
+const throttledBXPriceCharts = throttle(() => {
+  if (activeTab.value !== 'bx') return
+  renderBXProjChart()
+  renderBXHistPDEChart()
+}, CHART_PRICE_UPDATE_MS)
+const throttledGOOGLPriceCharts = throttle(() => {
+  if (activeTab.value !== 'googl') return
+  renderGOOGLProjChart()
+  renderGOOGLHistPEChart()
+}, CHART_PRICE_UPDATE_MS)
 
 // ─── Lifecycle ────────────────────────────────────────────────
 onMounted(async () => {
@@ -1359,10 +1436,10 @@ watch([bDe1, bDe2, bPMin, bPMax, bG, bD, bProjZoomed], () => {
 watch([bDe1, bPay, bG], () => {
   if (activeTab.value === 'bx') renderBXDeChart()
 })
-// Price throttle (only proj charts need price)
-watch(nvdaPrice, throttledNVDAProj)
-watch(bxPrice, throttledBXProj)
-watch(googlPrice, throttledGOOGLProj)
+// Price throttle
+watch(nvdaPrice, throttledNVDAPriceCharts)
+watch(bxPrice, throttledBXPriceCharts)
+watch(googlPrice, throttledGOOGLPriceCharts)
 // GOOGL revenue model
 watch([gR1, gR2, gR3, gR4], () => {
   if (activeTab.value === 'googl') renderGOOGLRevChart()
@@ -1728,19 +1805,19 @@ watch(watchlist, () => {
 
         <!-- ── Historical P/DE card ────────────────────────────── -->
         <div class="card">
-          <div class="card-title">Historical Non-GAAP TTM P/DE &mdash; 46 quarters</div>
-          <div class="insight">Full BX P/DE history from Q4 2014. Amber segments = below 20&times; (historically a strong re-entry signal). Blue band = 22&ndash;29&times; fair range. Dashed amber line = 20&times; buy-zone threshold.</div>
+          <div class="card-title">Historical Non-GAAP TTM P/DE &mdash; {{ bxQuarterCount }} quarters + live</div>
+          <div class="insight">Full BX P/DE history from Q4 2014, plus a live current point using Finnhub price / latest reported {{ BX_LATEST_DE_SOURCE.label }} DE per share. Amber segments = below 20&times;. Blue band = 22&ndash;29&times; fair range.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
               <div class="tlabel">All-time avg P/DE</div>
               <div class="tprice">{{ bxHistAvg.toFixed(1) }}&times;</div>
-              <div class="tret">across 46 quarters</div>
+              <div class="tret">across {{ bxQuarterCount }} quarters</div>
             </div>
             <div class="tcard">
-              <div class="tlabel">Current P/DE</div>
-              <div class="tprice" :class="bxHistCurrent < 20 ? 'amber' : ''">{{ bxHistCurrent }}&times;</div>
-              <div class="tret">Q4 2025</div>
+              <div class="tlabel">Live P/DE</div>
+              <div class="tprice" :class="bxCurrentPde < 20 ? 'amber' : ''">{{ bxCurrentPde.toFixed(2) }}&times;</div>
+              <div class="tret">{{ BX_LATEST_DE_SOURCE.label }} DE/share {{ dlr(BX_LATEST_DE_SOURCE.dePerShare) }}</div>
             </div>
             <div class="tcard hero">
               <div class="tlabel">Fair range</div>
@@ -1749,24 +1826,25 @@ watch(watchlist, () => {
             </div>
             <div class="tcard hero">
               <div class="tlabel">Buy-zone touches</div>
-              <div class="tprice">{{ bxHistBelowBuyZone }}&thinsp;/&thinsp;46</div>
-              <div class="tret">quarters below 20&times;</div>
+              <div class="tprice">{{ bxHistBelowBuyZone }}&thinsp;/&thinsp;{{ bxQuarterCount }}</div>
+              <div class="tret">{{ bxCurrentBelowBuyZone ? 'live point also below 20×' : 'historical quarters below 20×' }}</div>
             </div>
           </div>
 
           <div class="bx-hist-note">
-            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of 46 quarters &mdash; historically a strong re-entry signal. Current reading: <strong>{{ bxHistCurrent }}&times;</strong>.
+            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters &mdash; historically a strong re-entry signal. Live reading: <strong>{{ bxCurrentPde.toFixed(2) }}&times;</strong>.
           </div>
 
           <div class="chart-wrap" style="height:340px"><canvas ref="bHistPdeCanvas" /></div>
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />P/DE (above 20&times;)</span>
             <span class="legend-item"><span class="legend-line" style="background:#f59e0b" />P/DE (below 20&times; — buy zone)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Current = live price / DE</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />20&times; threshold</span>
             <span class="legend-item"><span class="legend-fill" />22&ndash;29&times; fair range</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />All-time avg ({{ bxHistAvg.toFixed(1) }}&times;)</span>
           </div>
-          <p class="note">22&times;&ndash;29&times; range sourced from 10-year DE growth analysis. Slider defaults set from these bounds.</p>
+          <p class="note">Latest DE checked against Blackstone Q1 2026 earnings release: DE was $1.36/share in Q1 and $5.84/share over the LTM. Q4 2025 uses FY2025 DE/share of $5.57 and year-end price. 22&times;&ndash;29&times; range sourced from 10-year DE growth analysis.</p>
         </div>
 
         <!-- P/DE Projection -->
@@ -1835,7 +1913,7 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">Payout ratio</span><span class="gterm-def">The percentage of DE paid out to shareholders as cash distributions. BX historically pays ~85%.</span></div>
           <div class="gterm"><span class="gterm-name">Distribution</span><span class="gterm-def">Cash paid regularly to shareholders. Equal to DE &times; payout ratio. The yield component of total return.</span></div>
           <div class="gterm"><span class="gterm-name">Total return</span><span class="gterm-def">Price appreciation plus yield (distributions received). For BX, yield is a meaningful part of the investment case.</span></div>
-          <div class="gterm"><span class="gterm-name">Buy zone (&lt;20&times;)</span><span class="gterm-def">Historically, P/DE below 20&times; has been a reliable re-entry signal. It has occurred in {{ bxHistBelowBuyZone }} of 46 tracked quarters.</span></div>
+          <div class="gterm"><span class="gterm-name">Buy zone (&lt;20&times;)</span><span class="gterm-def">Historically, P/DE below 20&times; has been a reliable re-entry signal. It has occurred in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters.</span></div>
           <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future DE discounted to today's dollars.</span></div>
         </div>
       </div>

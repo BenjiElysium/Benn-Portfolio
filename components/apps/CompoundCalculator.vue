@@ -118,6 +118,30 @@ const customSpendPath = computed(() => {
   })
 })
 
+const spendCurveBalanceBases = computed(() => {
+  if (spendData.value.length !== yrs.value) return []
+  const annualReturns = retEnabled.value && retData.value.length === yrs.value
+    ? retData.value
+    : Array.from({ length: yrs.value }, () => rate.value / 100)
+  const tr = tax.value / 100
+  const feeRate = fees.value / 100
+  const cgr = cg.value / 100
+  let bal = P.value
+  let cm = mo.value
+
+  return Array.from({ length: yrs.value }, (_, y) => {
+    const startBalance = Math.max(bal, 0)
+    const spendAmount = startBalance * spendData.value[y]
+    const monthlyReturn = (annualReturns[y] - feeRate) / 12
+    for (let mn = 0; mn < 12; mn++) {
+      bal = bal * (1 + monthlyReturn * (1 - tr)) + cm - spendAmount / 12
+      if (bal < 0) { bal = 0; break }
+    }
+    cm *= (1 + cgr)
+    return startBalance
+  })
+})
+
 // ── Metric cards ───────────────────────────────────────────────────────
 const finalNom     = computed(() => smooth.value.noms.at(-1))
 const finalReal    = computed(() => smooth.value.reals.at(-1))
@@ -140,7 +164,7 @@ const sliders = [
   {
     section: 'Portfolio',
     items: [
-      { label: 'Initial investment',      model: P,      min: 1000,  max: 3000000, step: 5000,  fmt: v => fmtFull(v) },
+      { label: 'Initial investment',      model: P,      min: 1000,  max: 20000000, step: 1000,  fmt: v => fmtFull(v) },
       { label: 'Monthly contribution',    model: mo,     min: 0,     max: 10000,   step: 100,   fmt: v => fmtFull(v) },
       { label: 'Contribution growth/yr',  model: cg,     min: 0,     max: 10,      step: 0.5,   fmt: v => v.toFixed(1) + '%' },
       { label: 'Time horizon',            model: yrs,    min: 5,     max: 50,      step: 1,     fmt: v => v + ' yrs' },
@@ -400,7 +424,7 @@ onUnmounted(() => {
         Custom Spend Curve
       </p>
       <p class="text-[12px] text-zinc-500 pb-2 leading-snug">
-        Drag to set withdrawal rate by year (0–15%). Overrides spend slider when active.
+        Drag to set withdrawal rate by year (0–15%). Hover a column for exact percent and estimated withdrawal dollars.
       </p>
       <div class="flex items-center gap-2 mb-3">
         <button
@@ -420,7 +444,10 @@ onUnmounted(() => {
         <AppsCurveEditor
           v-model="spendData"
           :yrs="yrs" :min="0" :max="0.15"
-          :signed="false" color="#FF9800" label="spend"
+          :signed="false" color="#FF9800" label="withdrawal"
+          :value-step="0.0005"
+          :amount-data="spendCurveBalanceBases"
+          amount-label="Withdrawal"
           :enabled="spendEnabled" :height="160"
         />
       </ClientOnly>
