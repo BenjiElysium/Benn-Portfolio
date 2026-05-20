@@ -210,6 +210,29 @@ const colCls = n => n >= 0 ? 'pos' : 'neg'
 const absDlr = n => (n >= 0 ? '+$' : '\u2212$') + Math.abs(n).toFixed(2)
 const fmtX = v => v.toFixed(1) + '\u00d7'
 
+function computeDcfBreakdown({ baseEPS, g5, h5, d, terminalMultiplier }) {
+  let ann = baseEPS
+  let pvEarnings = 0
+  for (let y = 1; y <= 5; y++) {
+    ann *= (1 + g5)
+    pvEarnings += ann / Math.pow(1 + d, y)
+  }
+  for (let y = 6; y <= 10; y++) {
+    ann *= (1 + h5)
+    pvEarnings += ann / Math.pow(1 + d, y)
+  }
+  const terminalValue = ann * terminalMultiplier
+  const pvTerminal = terminalValue / Math.pow(1 + d, 10)
+  return {
+    yr5EPS: baseEPS * Math.pow(1 + g5, 5),
+    yr10EPS: ann,
+    pvEarnings,
+    terminalValue,
+    pvTerminal,
+    floor: pvEarnings + pvTerminal,
+  }
+}
+
 const nvdaSliders = [
   {
     section: 'P/E Valuation',
@@ -385,6 +408,13 @@ const nFloor = computed(() => computeTwoPhaseDCF({
   d:  nD.value  / 100,
   terminalMultiplier: 10,
 }))
+const nDcfBreakdown = computed(() => computeDcfBreakdown({
+  baseEPS: nBaseEPS.value,
+  g5: nG5.value / 100,
+  h5: nH5.value / 100,
+  d:  nD.value  / 100,
+  terminalMultiplier: 10,
+}))
 const nVsFloor = computed(() => (nFloor.value - nvdaPrice.value) / nvdaPrice.value)
 
 // Historical P/E stats (reactive — updates if Finnhub data replaces seed)
@@ -404,19 +434,19 @@ const nRevEPSTotal = computed(() => nQEPS.value.reduce((a, b) => a + b, 0))
 const nRevQoQ      = computed(() => ((nR4.value / nR1.value) ** (1 / 3) - 1) * 100)
 const nRevHit1T    = computed(() => nRevTotal.value >= 1000)
 
-// NVDA conviction signal — based on current P/E vs historical ±1σ
+// NVDA conviction signal — based on current P/E vs normal historical range
 const nConviction = computed(() => {
   const pe = nHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = nHistStats.value
   if (pe < low - sigma) return {
     signal: 'EXTREME BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — more than 2σ below avg (${avg.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — far below the historical avg (${avg.toFixed(1)}×)`,
     context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
   }
   if (pe < low) return {
     signal: 'STRONG BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — below the −1σ floor (${low.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — below the normal low end (${low.toFixed(1)}×)`,
     context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
   }
   if (pe < avg) return {
@@ -426,7 +456,7 @@ const nConviction = computed(() => {
   }
   if (pe <= high) return {
     signal: 'HOLD / FAIR', color: 'yellow',
-    reason: `P/E ${pe.toFixed(1)}× — within the ±1σ band (${low.toFixed(1)}–${high.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — within the normal range (${low.toFixed(1)}–${high.toFixed(1)}×)`,
     context: `Multiple within the normal historical range. Not cheap, not extended.`,
   }
   return {
@@ -533,6 +563,13 @@ const gFloor = computed(() => computeTwoPhaseDCF({
   d:  gD.value  / 100,
   terminalMultiplier: 10,
 }))
+const gDcfBreakdown = computed(() => computeDcfBreakdown({
+  baseEPS: gBaseEPS.value,
+  g5: gG5.value / 100,
+  h5: gH5.value / 100,
+  d:  gD.value  / 100,
+  terminalMultiplier: 10,
+}))
 const gVsFloor = computed(() => (gFloor.value - googlPrice.value) / googlPrice.value)
 
 // Revenue model — FY2026 (calendar 2026)
@@ -559,12 +596,12 @@ const gConviction = computed(() => {
   const { avg, sigma, low, high } = gHistStats.value
   if (pe < low - sigma) return {
     signal: 'EXTREME BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — more than 2σ below avg (${avg.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — far below the historical avg (${avg.toFixed(1)}×)`,
     context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
   }
   if (pe < low) return {
     signal: 'STRONG BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — below the −1σ floor (${low.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — below the normal low end (${low.toFixed(1)}×)`,
     context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
   }
   if (pe < avg) return {
@@ -574,7 +611,7 @@ const gConviction = computed(() => {
   }
   if (pe <= high) return {
     signal: 'HOLD / FAIR', color: 'yellow',
-    reason: `P/E ${pe.toFixed(1)}× — within the ±1σ band (${low.toFixed(1)}–${high.toFixed(1)}×)`,
+    reason: `P/E ${pe.toFixed(1)}× — within the normal range (${low.toFixed(1)}–${high.toFixed(1)}×)`,
     context: `Multiple within the normal historical range. Not cheap, not extended.`,
   }
   return {
@@ -1584,8 +1621,14 @@ watch(watchlist, () => {
             <p class="mc-value">{{ n2Range }}</p>
             <p class="mc-sub">{{ n2RangeSub }}</p>
           </div>
-          <div class="metric-card">
-            <p class="mc-label">Two-phase DCF floor</p>
+          <div class="metric-card metric-card-help">
+            <div class="mc-head">
+              <p class="mc-label">Two-phase DCF floor</p>
+              <button type="button" class="help-dot" aria-label="Explain two-phase DCF floor">?</button>
+              <div class="metric-help" role="tooltip">
+                Present value estimate: {{ dlr(nDcfBreakdown.pvEarnings) }} discounted EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} discounted terminal value.
+              </div>
+            </div>
             <p class="mc-value">{{ dlr(nFloor) }}</p>
             <p class="mc-sub" :class="colCls(nVsFloor)">{{ nVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
           </div>
@@ -1603,7 +1646,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">±1&sigma; range from the last {{ nHistPE.length }} quarters (Q4 2016 onward — pre-reorientation data excluded). These bounds auto-seed the min/max P/E sliders. Override freely.</div>
+          <div class="insight">Normal historical range: avg P/E plus or minus one standard deviation from the last {{ nHistPE.length }} quarters (Q4 2016 onward — pre-reorientation data excluded). In plain English, it shows the zone where NVDA&apos;s P/E has usually clustered. These bounds auto-seed the min/max P/E sliders. Override freely.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
@@ -1611,16 +1654,17 @@ watch(watchlist, () => {
               <div class="tprice">{{ nHistStats.avg.toFixed(1) }}&times;</div>
             </div>
             <div class="tcard">
-              <div class="tlabel">Sigma (1&sigma;)</div>
+              <div class="tlabel">Typical spread</div>
               <div class="tprice">{{ nHistStats.sigma.toFixed(1) }}</div>
+              <div class="tret">1 standard deviation</div>
             </div>
             <div class="tcard hero">
-              <div class="tlabel">−1&sigma; (slider min)</div>
+              <div class="tlabel">Low end of normal range</div>
               <div class="tprice">{{ nHistStats.low.toFixed(1) }}&times;</div>
               <div class="tret">current slider: {{ nPeMin.toFixed(1) }}&times;</div>
             </div>
             <div class="tcard hero">
-              <div class="tlabel">+1&sigma; (slider max)</div>
+              <div class="tlabel">High end of normal range</div>
               <div class="tprice">{{ nHistStats.high.toFixed(1) }}&times;</div>
               <div class="tret">current slider: {{ nPeMax.toFixed(1) }}&times;</div>
             </div>
@@ -1630,7 +1674,7 @@ watch(watchlist, () => {
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />TTM P/E</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />Avg ({{ nHistStats.avg.toFixed(1) }}&times;)</span>
-            <span class="legend-item"><span class="legend-fill" />±1&sigma; band</span>
+            <span class="legend-item"><span class="legend-fill" />Normal range</span>
           </div>
           <p class="note">Data from Finnhub basic-financials if &ge;8 quarters available since 2016; otherwise hardcoded 7-quarter seed. Pre-2016 data excluded — NVDA's business model changed fundamentally in FY2017.</p>
         </div>
@@ -1638,7 +1682,7 @@ watch(watchlist, () => {
         <!-- ── P/E Projection card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">P/E valuation &mdash; price targets &amp; 10-year projection</div>
-          <div class="insight">Price target = Forward EPS &times; P/E multiple. Sliders default to ±1&sigma; of historical P/E range. Solid lines = 1yr/2yr targets; dotted = extrapolation.</div>
+          <div class="insight">Price target = Forward EPS &times; P/E multiple. Sliders default to the normal historical P/E range. Solid lines = 1yr/2yr targets; dotted = extrapolation.</div>
 
           <div class="section-label">1-year targets</div>
           <div class="targets">
@@ -1668,7 +1712,8 @@ watch(watchlist, () => {
         <!-- ── Two-phase DCF card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">Phase 1 (yr 0&ndash;5): EPS compounds at g5. Phase 2 (yr 5&ndash;10): decelerates at h5. The amber fill shows each year&apos;s EPS discounted at rate d &mdash; the gap between the EPS line and the fill is the &ldquo;time cost of money.&rdquo; Terminal value = yr-10 EPS &times; 10, discounted back to today.</div>
+          <div class="insight">This is a present-value estimate, not a price target. It grows EPS for 10 years, discounts those future dollars back at {{ nD }}%, then adds a conservative terminal value of year-10 EPS &times; 10.</div>
+          <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -1682,12 +1727,12 @@ watch(watchlist, () => {
             </div>
             <div class="tcard">
               <div class="tlabel">Yr-5 EPS (g5)</div>
-              <div class="tprice">{{ dlr(nBaseEPS * Math.pow(1 + nG5 / 100, 5)) }}</div>
+              <div class="tprice">{{ dlr(nDcfBreakdown.yr5EPS) }}</div>
               <div class="tret">from ${{ nBaseEPS.toFixed(2) }} base</div>
             </div>
             <div class="tcard">
               <div class="tlabel">Yr-10 EPS (h5)</div>
-              <div class="tprice">{{ dlr(nBaseEPS * Math.pow(1 + nG5 / 100, 5) * Math.pow(1 + nH5 / 100, 5)) }}</div>
+              <div class="tprice">{{ dlr(nDcfBreakdown.yr10EPS) }}</div>
               <div class="tret">terminal &times; 10</div>
             </div>
           </div>
@@ -1760,7 +1805,7 @@ watch(watchlist, () => {
         <div class="glossary-body" :class="{ open: nvdaGlossaryOpen }">
           <div class="gterm"><span class="gterm-name">EPS</span><span class="gterm-def">Earnings per share &mdash; the company's net profit divided by total shares.</span></div>
           <div class="gterm"><span class="gterm-name">Forward EPS</span><span class="gterm-def">An analyst's estimate of EPS over the next 12 months &mdash; projected, not yet reported.</span></div>
-          <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. Sliders now default to the ±1&sigma; historical range.</span></div>
+          <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. Sliders now default to the normal historical range.</span></div>
           <div class="gterm"><span class="gterm-name">Two-phase DCF</span><span class="gterm-def">A discounted cash flow model split into a high-growth phase (yr 1&ndash;5 at g5) and a deceleration phase (yr 6&ndash;10 at h5). More realistic than a single-rate model for hyper-growth companies.</span></div>
           <div class="gterm"><span class="gterm-name">Discount rate d</span><span class="gterm-def">The annual return you require to justify holding this stock. Set at 12% &mdash; the most conservative benchmark used by any major analyst.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum a stock should be worth based on DCF. A margin-of-safety check, not a price target.</span></div>
@@ -1937,8 +1982,14 @@ watch(watchlist, () => {
             <p class="mc-value">{{ g2Range }}</p>
             <p class="mc-sub">{{ g2RangeSub }}</p>
           </div>
-          <div class="metric-card">
-            <p class="mc-label">Two-phase DCF floor</p>
+          <div class="metric-card metric-card-help">
+            <div class="mc-head">
+              <p class="mc-label">Two-phase DCF floor</p>
+              <button type="button" class="help-dot" aria-label="Explain two-phase DCF floor">?</button>
+              <div class="metric-help" role="tooltip">
+                Present value estimate: {{ dlr(gDcfBreakdown.pvEarnings) }} discounted EPS + {{ dlr(gDcfBreakdown.pvTerminal) }} discounted terminal value.
+              </div>
+            </div>
             <p class="mc-value">{{ dlr(gFloor) }}</p>
             <p class="mc-sub" :class="colCls(gVsFloor)">{{ gVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
           </div>
@@ -1956,7 +2007,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">±1&sigma; range from the last {{ gHistPE.length }} quarters. Seeded with 7-quarter hardcoded data; overridden by Finnhub if &ge;8 quarters available since 2016. These bounds auto-seed the min/max P/E sliders.</div>
+          <div class="insight">Normal historical range: avg P/E plus or minus one standard deviation from the last {{ gHistPE.length }} quarters. In plain English, it shows the zone where GOOGL&apos;s P/E has usually clustered. Seeded with 7-quarter hardcoded data; overridden by Finnhub if &ge;8 quarters available since 2016.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
@@ -1964,16 +2015,17 @@ watch(watchlist, () => {
               <div class="tprice">{{ gHistStats.avg.toFixed(1) }}&times;</div>
             </div>
             <div class="tcard">
-              <div class="tlabel">Sigma (1&sigma;)</div>
+              <div class="tlabel">Typical spread</div>
               <div class="tprice">{{ gHistStats.sigma.toFixed(1) }}</div>
+              <div class="tret">1 standard deviation</div>
             </div>
             <div class="tcard hero">
-              <div class="tlabel">&minus;1&sigma; (slider min)</div>
+              <div class="tlabel">Low end of normal range</div>
               <div class="tprice">{{ gHistStats.low.toFixed(1) }}&times;</div>
               <div class="tret">current slider: {{ gPeMin.toFixed(1) }}&times;</div>
             </div>
             <div class="tcard hero">
-              <div class="tlabel">+1&sigma; (slider max)</div>
+              <div class="tlabel">High end of normal range</div>
               <div class="tprice">{{ gHistStats.high.toFixed(1) }}&times;</div>
               <div class="tret">current slider: {{ gPeMax.toFixed(1) }}&times;</div>
             </div>
@@ -1983,7 +2035,7 @@ watch(watchlist, () => {
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />TTM P/E</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />Avg ({{ gHistStats.avg.toFixed(1) }}&times;)</span>
-            <span class="legend-item"><span class="legend-fill" />±1&sigma; band</span>
+            <span class="legend-item"><span class="legend-fill" />Normal range</span>
           </div>
           <p class="note">GOOGL fiscal year = calendar year. P/E has been more stable than NVDA &mdash; 20&ndash;35&times; for most of the post-2017 period, briefly dipping below 20&times; in 2022.</p>
         </div>
@@ -1991,7 +2043,7 @@ watch(watchlist, () => {
         <!-- ── P/E Projection card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">P/E valuation &mdash; price targets &amp; 10-year projection</div>
-          <div class="insight">Price target = Forward EPS &times; P/E multiple. Sliders default to ±1&sigma; of historical P/E range. Solid lines = 1yr/2yr targets; dotted = extrapolation.</div>
+          <div class="insight">Price target = Forward EPS &times; P/E multiple. Sliders default to the normal historical P/E range. Solid lines = 1yr/2yr targets; dotted = extrapolation.</div>
 
           <div class="section-label">1-year targets</div>
           <div class="targets">
@@ -2021,7 +2073,8 @@ watch(watchlist, () => {
         <!-- ── Two-phase DCF card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">Phase 1 (yr 0&ndash;5): EPS compounds at g5. Phase 2 (yr 5&ndash;10): decelerates at h5. The amber fill shows each year&apos;s EPS discounted at rate d &mdash; the gap between the EPS line and the fill is the &ldquo;time cost of money.&rdquo; Terminal value = yr-10 EPS &times; 10, discounted back to today.</div>
+          <div class="insight">This is a present-value estimate, not a price target. It grows EPS for 10 years, discounts those future dollars back at {{ gD }}%, then adds a conservative terminal value of year-10 EPS &times; 10.</div>
+          <div class="insight">Current breakdown: {{ dlr(gDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(gDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(gDcfBreakdown.floor) }}.</div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -2035,12 +2088,12 @@ watch(watchlist, () => {
             </div>
             <div class="tcard">
               <div class="tlabel">Yr-5 EPS (g5)</div>
-              <div class="tprice">{{ dlr(gBaseEPS * Math.pow(1 + gG5 / 100, 5)) }}</div>
+              <div class="tprice">{{ dlr(gDcfBreakdown.yr5EPS) }}</div>
               <div class="tret">from ${{ gBaseEPS.toFixed(2) }} base</div>
             </div>
             <div class="tcard">
               <div class="tlabel">Yr-10 EPS (h5)</div>
-              <div class="tprice">{{ dlr(gBaseEPS * Math.pow(1 + gG5 / 100, 5) * Math.pow(1 + gH5 / 100, 5)) }}</div>
+              <div class="tprice">{{ dlr(gDcfBreakdown.yr10EPS) }}</div>
               <div class="tret">terminal &times; 10</div>
             </div>
           </div>
@@ -2185,9 +2238,51 @@ watch(watchlist, () => {
 
 /* ─── Metric cards ───────────────────────────────────────────── */
 .metric-card { background: var(--c-bg2); border-radius: var(--r-md); padding: 12px 14px; border: 0.5px solid var(--c-border); }
+.metric-card-help { position: relative; }
+.mc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .mc-label { font-size: 11px; color: var(--c-text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.mc-head .mc-label { margin-bottom: 0; }
 .mc-value { font-size: 22px; font-weight: 500; color: var(--c-text); line-height: 1.2; }
 .mc-sub { font-size: 12px; margin-top: 3px; color: var(--c-text2); }
+.help-dot {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  border: 0.5px solid var(--c-border2);
+  background: var(--c-bg);
+  color: var(--c-info-text);
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.metric-help {
+  position: absolute;
+  top: 36px;
+  right: 10px;
+  z-index: 20;
+  width: min(280px, calc(100vw - 48px));
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 0.5px solid rgba(125,211,252,0.35);
+  background: rgba(9,9,11,0.96);
+  color: var(--c-info-text);
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.help-dot:hover + .metric-help,
+.help-dot:focus-visible + .metric-help,
+.metric-help:hover {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
 
 .pos   { color: var(--c-pos)   !important; }
 .neg   { color: var(--c-neg)   !important; }
