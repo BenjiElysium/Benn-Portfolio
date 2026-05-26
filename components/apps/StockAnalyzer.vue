@@ -10,7 +10,7 @@ import {
 // ─── Chart.js (dynamic import — SSR-safe) ─────────────────────
 let ChartJS = null
 let nProjChart = null, nRevChart = null, nDcfChart = null
-let bProjChart = null, bDeChart = null
+let bProjChart = null, bDeChart = null, bDeGainChart = null
 let gProjChart = null, gRevChart = null, gHistPeChart = null, gEpsGainChart = null, gDcfChart = null
 let nHistPeChart = null, nEpsGainChart = null, bHistPdeChart = null
 
@@ -126,6 +126,15 @@ const BX_HIST_PDE = [
   { label: 'Q4 2014', value: 12.43 },
 ]
 
+const BX_DE_VS_GAIN = [
+  // DE/share is Blackstone non-GAAP DE per common share. Capital gain excludes distributions.
+  { year: '2021', de: 6.17, deGain: 84.7, cap: 99.65 },
+  { year: '2022', de: 6.63, deGain:  7.5, cap: -42.66 },
+  { year: '2023', de: 5.06, deGain: -23.7, cap: 76.47 },
+  { year: '2024', de: 5.97, deGain: 17.9, cap: 31.70 },
+  { year: '2025', de: 5.57, deGain: -6.7, cap: -10.60 },
+]
+
 // ─── EPS vs Capital Gain historical evidence ──────────────────
 const EPS_VS_GAIN = [
   // FY2017–FY2020: from original spreadsheet (source of truth)
@@ -187,6 +196,11 @@ const GOOGL_YAHOO_EPS_ESTIMATE_SEED = {
   y2027: 14.49,
 }
 
+const BX_DE_ESTIMATE_SEED = {
+  y2026: 6.33,
+  y2027: 7.90,
+}
+
 // ─── NVDA sliders ─────────────────────────────────────────────
 const nEps1   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2027)
 const nEps2   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2028)
@@ -205,8 +219,8 @@ const nR3 = ref(112.5)
 const nR4 = ref(140)
 
 // ─── BX sliders ───────────────────────────────────────────────
-const bDe1  = ref(6.33)
-const bDe2  = ref(7.90)
+const bDe1  = ref(BX_DE_ESTIMATE_SEED.y2026)
+const bDe2  = ref(BX_DE_ESTIMATE_SEED.y2027)
 const bPay  = ref(85)
 const bPMin = ref(22)
 const bPMax = ref(29)
@@ -380,6 +394,7 @@ const nEpsGainCanvas = ref(null)
 const nDcfCanvas     = ref(null)
 const bProjCanvas    = ref(null)
 const bDeCanvas      = ref(null)
+const bDeGainCanvas  = ref(null)
 const bHistPdeCanvas = ref(null)
 const gProjCanvas    = ref(null)
 const gRevCanvas     = ref(null)
@@ -447,8 +462,8 @@ const nRevHit1T    = computed(() => nRevTotal.value >= 1000)
 const nExpectedPrice1 = computed(() => (nP1l.value + nP1h.value) / 2)
 const nExpectedPrice2 = computed(() => (nP2l.value + nP2h.value) / 2)
 const nForwardEpsRows = computed(() => [
-  { label: 'FY2027E', eps: nEps1.value, source: 'Yahoo seeded / slider EPS' },
-  { label: 'FY2028E', eps: nEps2.value, source: 'Yahoo seeded / slider EPS' },
+  { label: 'FY2027E', eps: nEps1.value, source: 'Yahoo normalized consensus / slider EPS' },
+  { label: 'FY2028E', eps: nEps2.value, source: 'Yahoo normalized consensus / slider EPS' },
 ])
 const nExpectedPriceRow1 = computed(() => nExpectedPrice1.value)
 const nExpectedPriceRow2 = computed(() => {
@@ -549,6 +564,33 @@ const b2RangeSub = computed(() => `${pct((bP2l.value - bxPrice.value) / bxPrice.
 
 const bYld1 = computed(() => (bPay.value / 100 * bDe1.value) / bxPrice.value)
 const bYld2 = computed(() => (bPay.value / 100 * bDe2.value) / bxPrice.value)
+const bExpectedPrice1 = computed(() => (bP1l.value + bP1h.value) / 2)
+const bExpectedPrice2 = computed(() => (bP2l.value + bP2h.value) / 2)
+const bDeGainSeries = computed(() => [
+  ...BX_DE_VS_GAIN.map(d => ({ ...d, projected: false })),
+  {
+    year: '2026E',
+    de: bDe1.value,
+    deGain: pctPoint(bDe1.value / BX_LATEST_DE_SOURCE.dePerShare - 1),
+    cap: pctPoint(bExpectedPrice1.value / bxPrice.value - 1),
+    distYield: pctPoint(bYld1.value),
+    expectedPrice: bExpectedPrice1.value,
+    projected: true,
+    source: 'DE slider / LTM Q1 2026 base',
+    priceSource: 'P/DE midpoint target',
+  },
+  {
+    year: '2027E',
+    de: bDe2.value,
+    deGain: pctPoint(bDe2.value / bDe1.value - 1),
+    cap: pctPoint(bExpectedPrice2.value / bExpectedPrice1.value - 1),
+    distYield: pctPoint(bYld2.value),
+    expectedPrice: bExpectedPrice2.value,
+    projected: true,
+    source: 'DE slider',
+    priceSource: 'P/DE midpoint target',
+  },
+])
 
 const bFloor = computed(() => {
   const d = bD.value / 100, g = bG.value / 100
@@ -637,8 +679,8 @@ const gRevQoQ      = computed(() => ((gR4.value / gR1.value) ** (1 / 3) - 1) * 1
 const gExpectedPrice1 = computed(() => (gP1l.value + gP1h.value) / 2)
 const gExpectedPrice2 = computed(() => (gP2l.value + gP2h.value) / 2)
 const gForwardEpsRows = computed(() => [
-  { label: '2026E', eps: gEps1.value, source: 'Yahoo seeded / slider EPS' },
-  { label: '2027E', eps: gEps2.value, source: 'Yahoo seeded / slider EPS' },
+  { label: '2026E', eps: gEps1.value, source: 'Yahoo normalized consensus / slider EPS' },
+  { label: '2027E', eps: gEps2.value, source: 'Yahoo normalized consensus / slider EPS' },
 ])
 const gExpectedPriceRow1 = computed(() => gExpectedPrice1.value)
 const gExpectedPriceRow2 = computed(() => {
@@ -1076,6 +1118,62 @@ function renderBXDeChart() {
   } catch { /* give up */ }
 }
 
+// ─── BX DE vs capital gain chart ───────────────────────────────
+function renderBXDeGainChart() {
+  if (!ChartJS) return
+  const el = bDeGainCanvas.value
+  if (!el) return
+  safeDestroyChart(bDeGainChart); bDeGainChart = null
+  const g = gc()
+  const rows = bDeGainSeries.value
+  const deColors = rows.map(d => d.projected ? '#7dd3fc' : '#378ADD')
+  const capColors = rows.map(d => d.projected ? '#86efac' : '#1D9E75')
+
+  try {
+    bDeGainChart = new ChartJS(el, {
+      type: 'bar',
+      data: {
+        labels: rows.map(d => d.year),
+        datasets: [
+          { label: 'DE/share gain %', data: rows.map(d => d.deGain), backgroundColor: deColors },
+          { label: 'Capital gain %', data: rows.map(d => d.cap), backgroundColor: capColors },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                const row = rows[c.dataIndex]
+                const suffix = row?.projected ? ' (projected)' : ''
+                return `${c.dataset.label}${suffix}: ${c.raw}%`
+              },
+              afterBody: items => {
+                const row = rows[items?.[0]?.dataIndex]
+                if (!row) return null
+                const lines = [`DE/share: ${dlr(row.de)}`]
+                if (row.projected) {
+                  lines.push(`Implied price: ${dlr(row.expectedPrice)}`)
+                  lines.push(`Distribution yield: ${row.distYield}%`)
+                  lines.push(`DE source: ${row.source}`)
+                  lines.push(`Price source: ${row.priceSource}`)
+                }
+                return lines
+              },
+            },
+          },
+        },
+        scales: {
+          y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '%' }, title: { display: true, text: 'Annual gain %', font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        },
+      },
+    })
+  } catch { /* give up */ }
+}
+
 // ─── BX Historical P/DE chart ─────────────────────────────────
 function renderBXHistPDEChart() {
   if (!ChartJS) return
@@ -1164,6 +1262,7 @@ function renderBXHistPDEChart() {
 function renderBXCharts() {
   renderBXProjChart()
   renderBXDeChart()
+  renderBXDeGainChart()
   renderBXHistPDEChart()
 }
 
@@ -1550,6 +1649,7 @@ const throttledNVDAPriceCharts = throttle(() => {
 const throttledBXPriceCharts = throttle(() => {
   if (activeTab.value !== 'bx') return
   renderBXProjChart()
+  renderBXDeGainChart()
   renderBXHistPDEChart()
 }, CHART_PRICE_UPDATE_MS)
 const throttledGOOGLPriceCharts = throttle(() => {
@@ -1585,7 +1685,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', checkBreakpoint)
   stopPolling()
   ;[nProjChart, nRevChart, nHistPeChart, nEpsGainChart, nDcfChart,
-    bProjChart, bDeChart, bHistPdeChart,
+    bProjChart, bDeChart, bDeGainChart, bHistPdeChart,
     gProjChart, gRevChart, gHistPeChart, gEpsGainChart, gDcfChart].forEach(safeDestroyChart)
 })
 
@@ -1612,11 +1712,15 @@ watch(nHistPE, () => {
 }, { deep: true })
 // BX projection
 watch([bDe1, bDe2, bPMin, bPMax, bG, bD, bProjZoomed], () => {
-  if (activeTab.value === 'bx') renderBXProjChart()
+  if (activeTab.value !== 'bx') return
+  renderBXProjChart()
+  renderBXDeGainChart()
 })
 // BX DE growth
-watch([bDe1, bPay, bG], () => {
-  if (activeTab.value === 'bx') renderBXDeChart()
+watch([bDe1, bDe2, bPay, bG], () => {
+  if (activeTab.value !== 'bx') return
+  renderBXDeChart()
+  renderBXDeGainChart()
 })
 // Price throttle
 watch(nvdaPrice, throttledNVDAPriceCharts)
@@ -1913,7 +2017,7 @@ watch(watchlist, () => {
 
         <!-- ── EPS drives price card ───────────────────────────── -->
         <div class="card">
-          <div class="card-title">EPS drives price &mdash; historical evidence (FY2017&ndash;FY2026)</div>
+          <div class="card-title">EPS / normalized EPS drives price &mdash; historical evidence (FY2017&ndash;FY2026)</div>
           <div class="insight">From FY2017 to present, EPS and stock price CAGR are near-identical (70% vs 72%). Every 1% EPS gain translates to ~0.42% price rise. The multiple is earned, not speculative.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
@@ -1946,7 +2050,7 @@ watch(watchlist, () => {
           </div>
           <p class="note">FY2019 shows the negative-correlation test: EPS fell &minus;48%, stock fell &minus;31%. Even in drawdowns, price tracks EPS direction.</p>
           <p class="note">FY2023 exception: GAAP EPS fell again (down-cycle continued), yet the stock surged +239% as the market priced the AI inflection ahead of earnings &mdash; price led EPS by ~12 months. FY2026 is a partial year (YTD through March 30).</p>
-          <p class="note">Projected years use Yahoo consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
+          <p class="note">Projected years use Yahoo normalized consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
         </div>
 
         <!-- NVDA Glossary -->
@@ -2097,6 +2201,45 @@ watch(watchlist, () => {
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />DE per share</span>
             <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Distribution per share (right axis)</span>
           </div>
+        </div>
+
+        <!-- BX DE drives price -->
+        <div class="card">
+          <div class="card-title">DE drives price &mdash; historical evidence (2021&ndash;2025)</div>
+          <div class="insight">BX is better analyzed with non-GAAP Distributable Earnings than GAAP EPS. This chart mirrors the NVDA/GOOGL EPS chart, but swaps EPS for DE/share and keeps capital gain separate from distributions.</div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
+            <div class="tcard hero">
+              <div class="tlabel">Latest LTM DE/share</div>
+              <div class="tprice">{{ dlr(BX_LATEST_DE_SOURCE.dePerShare) }}</div>
+              <div class="tret">{{ BX_LATEST_DE_SOURCE.label }}</div>
+            </div>
+            <div class="tcard hero">
+              <div class="tlabel">2026E DE/share</div>
+              <div class="tprice">{{ dlr(bDe1) }}</div>
+              <div class="tret">{{ pct(bDe1 / BX_LATEST_DE_SOURCE.dePerShare - 1) }} vs LTM</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">2027E DE/share</div>
+              <div class="tprice">{{ dlr(bDe2) }}</div>
+              <div class="tret">{{ pct(bDe2 / bDe1 - 1) }} vs 2026E</div>
+            </div>
+            <div class="tcard">
+              <div class="tlabel">Projected yield</div>
+              <div class="tprice">{{ (bYld1 * 100).toFixed(1) }}%</div>
+              <div class="tret">based on payout slider</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap" style="height:240px"><canvas ref="bDeGainCanvas" /></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />DE/share gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#7dd3fc" />Projected DE/share gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#86efac" />Projected capital gain %</span>
+          </div>
+          <p class="note">Historical DE/share uses Blackstone non-GAAP DE per common share. Capital gain excludes dividends, which are a major part of BX total return.</p>
+          <p class="note">Projected years use explicit DE/share seeds in the sliders, not Yahoo normalized EPS. Tooltip shows DE/share, implied price, and distribution yield.</p>
         </div>
 
         <!-- BX Glossary -->
@@ -2277,7 +2420,7 @@ watch(watchlist, () => {
 
         <!-- ── EPS drives price card ───────────────────────────── -->
         <div class="card">
-          <div class="card-title">EPS drives price &mdash; historical evidence (2017&ndash;2025)</div>
+          <div class="card-title">EPS / normalized EPS drives price &mdash; historical evidence (2017&ndash;2025)</div>
           <div class="insight">GOOGL's EPS and stock price track each other more tightly than NVDA &mdash; higher correlation, beta closer to 1.0. Fiscal year = calendar year, so no lag between EPS reporting period and price return.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
@@ -2313,7 +2456,7 @@ watch(watchlist, () => {
           <p class="note">2022: EPS fell &minus;21%, stock fell &minus;39% &mdash; market overcorrected, setting up the +58% rebound in 2023 on +27% EPS growth.</p>
           <p class="note">2021: EPS surged +91% but stock gained only +65% &mdash; the market had already priced in growth ahead of earnings, mirror image of NVDA&apos;s 2023.</p>
           <p class="note">Yahoo consensus currently implies a near-flat 2027 EPS step: $14.24 in 2026 to $14.49 in 2027, or roughly +1.8% growth.</p>
-          <p class="note">Projected years use Yahoo consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
+          <p class="note">Projected years use Yahoo normalized consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
         </div>
 
         <!-- GOOGL Glossary -->
