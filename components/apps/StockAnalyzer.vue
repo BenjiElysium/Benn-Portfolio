@@ -177,9 +177,19 @@ const GOOGL_EPS_VS_GAIN = [
   { year: '2025', eps:  34.45, cap:  65.35 },
 ]
 
+const NVDA_YAHOO_EPS_ESTIMATE_SEED = {
+  fy2027: 8.94,
+  fy2028: 12.65,
+}
+
+const GOOGL_YAHOO_EPS_ESTIMATE_SEED = {
+  y2026: 14.24,
+  y2027: 14.49,
+}
+
 // ─── NVDA sliders ─────────────────────────────────────────────
-const nEps1   = ref(8.29)
-const nEps2   = ref(11.12)
+const nEps1   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2027)
+const nEps2   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2028)
 const nPeMin  = ref(+_ss.low.toFixed(1))    // ~39.5 from seed ±1σ
 const nPeMax  = ref(+_ss.high.toFixed(1))   // ~58.9 from seed ±1σ
 const nG      = ref(33.6)   // projection chart extrapolation only
@@ -209,6 +219,7 @@ const pct = (n, d = 1) => (n >= 0 ? '+' : '') + (n * 100).toFixed(d) + '%'
 const colCls = n => n >= 0 ? 'pos' : 'neg'
 const absDlr = n => (n >= 0 ? '+$' : '\u2212$') + Math.abs(n).toFixed(2)
 const fmtX = v => v.toFixed(1) + '\u00d7'
+const pctPoint = n => +(n * 100).toFixed(2)
 
 function computeDcfBreakdown({ baseEPS, g5, h5, d, terminalMultiplier }) {
   let ann = baseEPS
@@ -280,8 +291,8 @@ const bxSliders = [
 ]
 
 // ─── GOOGL sliders ─────────────────────────────────────────────
-const gEps1    = ref(12.00)
-const gEps2    = ref(15.00)
+const gEps1    = ref(GOOGL_YAHOO_EPS_ESTIMATE_SEED.y2026)
+const gEps2    = ref(GOOGL_YAHOO_EPS_ESTIMATE_SEED.y2027)
 const gPeMin   = ref(+_gs.low.toFixed(1))
 const gPeMax   = ref(+_gs.high.toFixed(1))
 const gG       = ref(15)
@@ -433,6 +444,46 @@ const nQEPS        = computed(() => {
 const nRevEPSTotal = computed(() => nQEPS.value.reduce((a, b) => a + b, 0))
 const nRevQoQ      = computed(() => ((nR4.value / nR1.value) ** (1 / 3) - 1) * 100)
 const nRevHit1T    = computed(() => nRevTotal.value >= 1000)
+const nExpectedPrice1 = computed(() => (nP1l.value + nP1h.value) / 2)
+const nExpectedPrice2 = computed(() => (nP2l.value + nP2h.value) / 2)
+const nForwardEpsRows = computed(() => [
+  { label: 'FY2027E', eps: nEps1.value, source: 'Yahoo seeded / slider EPS' },
+  { label: 'FY2028E', eps: nEps2.value, source: 'Yahoo seeded / slider EPS' },
+])
+const nExpectedPriceRow1 = computed(() => nExpectedPrice1.value)
+const nExpectedPriceRow2 = computed(() => {
+  const eps = nForwardEpsRows.value[1]?.eps ?? nEps2.value
+  return eps * ((nPeMin.value + nPeMax.value) / 2)
+})
+const nEpsGainSeries = computed(() => {
+  const row1 = nForwardEpsRows.value[0]
+  const row2 = nForwardEpsRows.value[1]
+  const price1 = nExpectedPriceRow1.value
+  const price2 = nExpectedPriceRow2.value
+  return [
+    ...EPS_VS_GAIN.map(d => ({ ...d, projected: false })),
+    {
+      year: row1.label,
+      eps: pctPoint(row1.eps / nBaseEPS.value - 1),
+      cap: pctPoint(price1 / nvdaPrice.value - 1),
+      epsEstimate: row1.eps,
+      expectedPrice: price1,
+      projected: true,
+      source: row1.source,
+      priceSource: 'slider midpoint target',
+    },
+    {
+      year: row2.label,
+      eps: pctPoint(row2.eps / row1.eps - 1),
+      cap: pctPoint(price2 / price1 - 1),
+      epsEstimate: row2.eps,
+      expectedPrice: price2,
+      projected: true,
+      source: row2.source,
+      priceSource: 'EPS estimate × P/E midpoint',
+    },
+  ]
+})
 
 // NVDA conviction signal — based on current P/E vs normal historical range
 const nConviction = computed(() => {
@@ -583,6 +634,46 @@ const gQEPS        = computed(() => {
 })
 const gRevEPSTotal = computed(() => gQEPS.value.reduce((a, b) => a + b, 0))
 const gRevQoQ      = computed(() => ((gR4.value / gR1.value) ** (1 / 3) - 1) * 100)
+const gExpectedPrice1 = computed(() => (gP1l.value + gP1h.value) / 2)
+const gExpectedPrice2 = computed(() => (gP2l.value + gP2h.value) / 2)
+const gForwardEpsRows = computed(() => [
+  { label: '2026E', eps: gEps1.value, source: 'Yahoo seeded / slider EPS' },
+  { label: '2027E', eps: gEps2.value, source: 'Yahoo seeded / slider EPS' },
+])
+const gExpectedPriceRow1 = computed(() => gExpectedPrice1.value)
+const gExpectedPriceRow2 = computed(() => {
+  const eps = gForwardEpsRows.value[1]?.eps ?? gEps2.value
+  return eps * ((gPeMin.value + gPeMax.value) / 2)
+})
+const gEpsGainSeries = computed(() => {
+  const row1 = gForwardEpsRows.value[0]
+  const row2 = gForwardEpsRows.value[1]
+  const price1 = gExpectedPriceRow1.value
+  const price2 = gExpectedPriceRow2.value
+  return [
+    ...GOOGL_EPS_VS_GAIN.map(d => ({ ...d, projected: false })),
+    {
+      year: row1.label,
+      eps: pctPoint(row1.eps / gBaseEPS.value - 1),
+      cap: pctPoint(price1 / googlPrice.value - 1),
+      epsEstimate: row1.eps,
+      expectedPrice: price1,
+      projected: true,
+      source: row1.source,
+      priceSource: 'slider midpoint target',
+    },
+    {
+      year: row2.label,
+      eps: pctPoint(row2.eps / row1.eps - 1),
+      cap: pctPoint(price2 / price1 - 1),
+      epsEstimate: row2.eps,
+      expectedPrice: price2,
+      projected: true,
+      source: row2.source,
+      priceSource: 'EPS estimate × P/E midpoint',
+    },
+  ]
+})
 
 const gHistStats = computed(() => {
   const chronological = [...gHistPE.value].reverse()
@@ -784,20 +875,44 @@ function renderNVDAEpsGainChart() {
   if (!el) return
   safeDestroyChart(nEpsGainChart); nEpsGainChart = null
   const g = gc()
+  const rows = nEpsGainSeries.value
+  const epsColors = rows.map(d => d.projected ? '#7dd3fc' : '#378ADD')
+  const capColors = rows.map(d => d.projected ? '#86efac' : '#1D9E75')
 
   try {
     nEpsGainChart = new ChartJS(el, {
       type: 'bar',
       data: {
-        labels: EPS_VS_GAIN.map(d => d.year),
+        labels: rows.map(d => d.year),
         datasets: [
-          { label: 'EPS gain %', data: EPS_VS_GAIN.map(d => d.eps), backgroundColor: '#378ADD' },
-          { label: 'Capital gain %', data: EPS_VS_GAIN.map(d => d.cap), backgroundColor: '#1D9E75' },
+          { label: 'EPS gain %', data: rows.map(d => d.eps), backgroundColor: epsColors },
+          { label: 'Capital gain %', data: rows.map(d => d.cap), backgroundColor: capColors },
         ],
       },
       options: {
         animation: false, responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                const row = rows[c.dataIndex]
+                const suffix = row?.projected ? ' (projected)' : ''
+                return `${c.dataset.label}${suffix}: ${c.raw}%`
+              },
+              afterBody: items => {
+                const row = rows[items?.[0]?.dataIndex]
+                if (!row?.projected) return null
+                return [
+                  `EPS estimate: ${dlr(row.epsEstimate)}`,
+                  `Implied price: ${dlr(row.expectedPrice)}`,
+                  `EPS source: ${row.source}`,
+                  `Price source: ${row.priceSource}`,
+                ]
+              },
+            },
+          },
+        },
         scales: {
           y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '%' }, title: { display: true, text: 'Annual gain %', font: { size: 11 } } },
           x: { grid: { display: false }, ticks: { font: { size: 11 } } },
@@ -1181,20 +1296,44 @@ function renderGOOGLEpsGainChart() {
   if (!el) return
   safeDestroyChart(gEpsGainChart); gEpsGainChart = null
   const g = gc()
+  const rows = gEpsGainSeries.value
+  const epsColors = rows.map(d => d.projected ? '#7dd3fc' : '#378ADD')
+  const capColors = rows.map(d => d.projected ? '#86efac' : '#1D9E75')
 
   try {
     gEpsGainChart = new ChartJS(el, {
       type: 'bar',
       data: {
-        labels: GOOGL_EPS_VS_GAIN.map(d => d.year),
+        labels: rows.map(d => d.year),
         datasets: [
-          { label: 'EPS gain %', data: GOOGL_EPS_VS_GAIN.map(d => d.eps), backgroundColor: '#378ADD' },
-          { label: 'Capital gain %', data: GOOGL_EPS_VS_GAIN.map(d => d.cap), backgroundColor: '#1D9E75' },
+          { label: 'EPS gain %', data: rows.map(d => d.eps), backgroundColor: epsColors },
+          { label: 'Capital gain %', data: rows.map(d => d.cap), backgroundColor: capColors },
         ],
       },
       options: {
         animation: false, responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                const row = rows[c.dataIndex]
+                const suffix = row?.projected ? ' (projected)' : ''
+                return `${c.dataset.label}${suffix}: ${c.raw}%`
+              },
+              afterBody: items => {
+                const row = rows[items?.[0]?.dataIndex]
+                if (!row?.projected) return null
+                return [
+                  `EPS estimate: ${dlr(row.epsEstimate)}`,
+                  `Implied price: ${dlr(row.expectedPrice)}`,
+                  `EPS source: ${row.source}`,
+                  `Price source: ${row.priceSource}`,
+                ]
+              },
+            },
+          },
+        },
         scales: {
           y: { grid: { color: g }, ticks: { font: { size: 11 }, callback: v => v + '%' }, title: { display: true, text: 'Annual gain %', font: { size: 11 } } },
           x: { grid: { display: false }, ticks: { font: { size: 11 } } },
@@ -1406,6 +1545,7 @@ const throttledNVDAPriceCharts = throttle(() => {
   if (activeTab.value !== 'nvda') return
   renderNVDAProjChart()
   renderNVDAHistPEChart()
+  renderNVDAEpsGainChart()
 }, CHART_PRICE_UPDATE_MS)
 const throttledBXPriceCharts = throttle(() => {
   if (activeTab.value !== 'bx') return
@@ -1416,6 +1556,7 @@ const throttledGOOGLPriceCharts = throttle(() => {
   if (activeTab.value !== 'googl') return
   renderGOOGLProjChart()
   renderGOOGLHistPEChart()
+  renderGOOGLEpsGainChart()
 }, CHART_PRICE_UPDATE_MS)
 
 // ─── Lifecycle ────────────────────────────────────────────────
@@ -1451,7 +1592,9 @@ onUnmounted(() => {
 // ─── Watchers ─────────────────────────────────────────────────
 // NVDA P/E projection
 watch([nEps1, nEps2, nPeMin, nPeMax, nG, nProjZoomed], () => {
-  if (activeTab.value === 'nvda') renderNVDAProjChart()
+  if (activeTab.value !== 'nvda') return
+  renderNVDAProjChart()
+  renderNVDAEpsGainChart()
 })
 // NVDA revenue model
 watch([nR1, nR2, nR3, nR4], () => {
@@ -1459,7 +1602,9 @@ watch([nR1, nR2, nR3, nR4], () => {
 })
 // NVDA DCF chart
 watch([nBaseEPS, nG5, nH5, nD], () => {
-  if (activeTab.value === 'nvda') renderNVDADcfChart()
+  if (activeTab.value !== 'nvda') return
+  renderNVDADcfChart()
+  renderNVDAEpsGainChart()
 })
 // NVDA historical P/E (updates when Finnhub data arrives)
 watch(nHistPE, () => {
@@ -1483,7 +1628,9 @@ watch([gR1, gR2, gR3, gR4], () => {
 })
 // GOOGL projection
 watch([gEps1, gEps2, gPeMin, gPeMax, gG, gProjZoomed], () => {
-  if (activeTab.value === 'googl') renderGOOGLProjChart()
+  if (activeTab.value !== 'googl') return
+  renderGOOGLProjChart()
+  renderGOOGLEpsGainChart()
 })
 // GOOGL historical P/E (updates when Finnhub data arrives)
 watch(gHistPE, () => {
@@ -1491,7 +1638,9 @@ watch(gHistPE, () => {
 }, { deep: true })
 // GOOGL DCF chart
 watch([gBaseEPS, gG5, gH5, gD], () => {
-  if (activeTab.value === 'googl') renderGOOGLDcfChart()
+  if (activeTab.value !== 'googl') return
+  renderGOOGLDcfChart()
+  renderGOOGLEpsGainChart()
 })
 // Tab switch — render newly visible charts
 watch(activeTab, (tab) => {
@@ -1792,9 +1941,12 @@ watch(watchlist, () => {
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />EPS gain %</span>
             <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#7dd3fc" />Projected EPS gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#86efac" />Projected capital gain %</span>
           </div>
           <p class="note">FY2019 shows the negative-correlation test: EPS fell &minus;48%, stock fell &minus;31%. Even in drawdowns, price tracks EPS direction.</p>
           <p class="note">FY2023 exception: GAAP EPS fell again (down-cycle continued), yet the stock surged +239% as the market priced the AI inflection ahead of earnings &mdash; price led EPS by ~12 months. FY2026 is a partial year (YTD through March 30).</p>
+          <p class="note">Projected years use Yahoo consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
         </div>
 
         <!-- NVDA Glossary -->
@@ -2155,9 +2307,13 @@ watch(watchlist, () => {
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />EPS gain %</span>
             <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Capital gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#7dd3fc" />Projected EPS gain %</span>
+            <span class="legend-item"><span class="legend-line" style="background:#86efac" />Projected capital gain %</span>
           </div>
           <p class="note">2022: EPS fell &minus;21%, stock fell &minus;39% &mdash; market overcorrected, setting up the +58% rebound in 2023 on +27% EPS growth.</p>
           <p class="note">2021: EPS surged +91% but stock gained only +65% &mdash; the market had already priced in growth ahead of earnings, mirror image of NVDA&apos;s 2023.</p>
+          <p class="note">Yahoo consensus currently implies a near-flat 2027 EPS step: $14.24 in 2026 to $14.49 in 2027, or roughly +1.8% growth.</p>
+          <p class="note">Projected years use Yahoo consensus EPS seeds as slider defaults, with capital gain based on midpoint target prices from the current P/E range.</p>
         </div>
 
         <!-- GOOGL Glossary -->
