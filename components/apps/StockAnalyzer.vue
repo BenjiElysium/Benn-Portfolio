@@ -3,9 +3,11 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { buildProjectionChart } from '~/composables/useProjectionChart.js'
 import {
   computeHistoricalStats,
-  computeTwoPhaseDCF,
+  computeStagedDCF,
+  computeSinglePhaseDCF,
   extractFinnhubPESeries,
 } from '~/composables/useStockValuation.js'
+import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario } from '~/config/tickerConfig.mjs'
 
 // ─── Chart.js (dynamic import — SSR-safe) ─────────────────────
 let ChartJS = null
@@ -26,6 +28,11 @@ const livePaused = ref(false)
 const POLL_INTERVAL_MS = 30_000
 let pollTimer = null
 
+// ─── Per-ticker reactive stores (cloned from config on mount) ───
+const nvdaState = reactive({})
+const bxState = reactive({})
+const googlState = reactive({})
+
 // ─── Sidebar ──────────────────────────────────────────────────
 const isLg = ref(true)
 const sidebarOpen = ref(false)
@@ -37,6 +44,11 @@ function checkBreakpoint() {
   if (wasLg !== isLg.value) sidebarOpen.value = isLg.value
 }
 function toggleSidebar() { sidebarOpen.value = !sidebarOpen.value }
+
+// ─── Scenario preset handler ───────────────────────────────────
+function applyNVDAScenario(scenarioKey) {
+  applyScenario(nvdaState, scenarioKey, TICKER_CONFIG.NVDA)
+}
 
 // ─── Cost bases ───────────────────────────────────────────────
 const BASES = {
@@ -201,31 +213,147 @@ const BX_DE_ESTIMATE_SEED = {
   y2027: 7.90,
 }
 
-// ─── NVDA sliders ─────────────────────────────────────────────
-const nEps1   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2027)
-const nEps2   = ref(NVDA_YAHOO_EPS_ESTIMATE_SEED.fy2028)
-const nPeMin  = ref(+_ss.low.toFixed(1))    // ~39.5 from seed ±1σ
-const nPeMax  = ref(+_ss.high.toFixed(1))   // ~58.9 from seed ±1σ
-const nG      = ref(33.6)   // projection chart extrapolation only
-// Two-phase DCF sliders
-const nG5     = ref(70)     // yr 1–5 EPS growth %
-const nH5     = ref(30)     // yr 6–10 EPS growth %
-const nD      = ref(12)     // discount rate % (most conservative benchmark)
-const nBaseEPS = ref(4.90)  // FY2026 actual EPS
-// Revenue model
-const nR1 = ref(78)
-const nR2 = ref(93.5)
-const nR3 = ref(112.5)
-const nR4 = ref(140)
+// ─── Computed getters/setters over reactive stores ──────────────
+// Store is the single source of truth. Computed refs expose store fields.
+// Template binds to computed, not to hardcoded refs.
 
-// ─── BX sliders ───────────────────────────────────────────────
-const bDe1  = ref(BX_DE_ESTIMATE_SEED.y2026)
-const bDe2  = ref(BX_DE_ESTIMATE_SEED.y2027)
-const bPay  = ref(85)
-const bPMin = ref(22)
-const bPMax = ref(29)
-const bG    = ref(10)
-const bD    = ref(8)
+// NVDA computed refs
+const nEps1 = computed({
+  get: () => nvdaState.forward?.y1 ?? TICKER_CONFIG.NVDA.forward.y1,
+  set: (v) => { nvdaState.forward.y1 = v }
+})
+const nEps2 = computed({
+  get: () => nvdaState.forward?.y2 ?? TICKER_CONFIG.NVDA.forward.y2,
+  set: (v) => { nvdaState.forward.y2 = v }
+})
+const nPeMin = computed({
+  get: () => nvdaState.multipleBand?.min ?? TICKER_CONFIG.NVDA.multipleBand.min,
+  set: (v) => { nvdaState.multipleBand.min = v }
+})
+const nPeMax = computed({
+  get: () => nvdaState.multipleBand?.max ?? TICKER_CONFIG.NVDA.multipleBand.max,
+  set: (v) => { nvdaState.multipleBand.max = v }
+})
+const nG = computed({
+  get: () => nvdaState.projectionGrowth ?? TICKER_CONFIG.NVDA.projectionGrowth,
+  set: (v) => { nvdaState.projectionGrowth = v }
+})
+const nG5 = computed({
+  get: () => nvdaState.dcfDefaults?.g5 ?? TICKER_CONFIG.NVDA.dcfDefaults.g5,
+  set: (v) => { nvdaState.dcfDefaults.g5 = v }
+})
+const nH5 = computed({
+  get: () => nvdaState.dcfDefaults?.h5 ?? TICKER_CONFIG.NVDA.dcfDefaults.h5,
+  set: (v) => { nvdaState.dcfDefaults.h5 = v }
+})
+const nD = computed({
+  get: () => (nDiscountRate.value * 100).toFixed(2),
+  set: (v) => { /* read-only; discount rate is CAPM-derived */ }
+})
+const nBaseEPS = computed({
+  get: () => nvdaState.baseValue ?? TICKER_CONFIG.NVDA.baseValue,
+  set: (v) => { nvdaState.baseValue = v }
+})
+const nR1 = computed({
+  get: () => nvdaState.revenueModel?.q1 ?? TICKER_CONFIG.NVDA.revenueModel.q1,
+  set: (v) => { nvdaState.revenueModel.q1 = v }
+})
+const nR2 = computed({
+  get: () => nvdaState.revenueModel?.q2 ?? TICKER_CONFIG.NVDA.revenueModel.q2,
+  set: (v) => { nvdaState.revenueModel.q2 = v }
+})
+const nR3 = computed({
+  get: () => nvdaState.revenueModel?.q3 ?? TICKER_CONFIG.NVDA.revenueModel.q3,
+  set: (v) => { nvdaState.revenueModel.q3 = v }
+})
+const nR4 = computed({
+  get: () => nvdaState.revenueModel?.q4 ?? TICKER_CONFIG.NVDA.revenueModel.q4,
+  set: (v) => { nvdaState.revenueModel.q4 = v }
+})
+
+// BX computed refs
+const bDe1 = computed({
+  get: () => bxState.forward?.y1 ?? TICKER_CONFIG.BX.forward.y1,
+  set: (v) => { bxState.forward.y1 = v }
+})
+const bDe2 = computed({
+  get: () => bxState.forward?.y2 ?? TICKER_CONFIG.BX.forward.y2,
+  set: (v) => { bxState.forward.y2 = v }
+})
+const bPay = computed({
+  get: () => bxState.payoutRatio ?? TICKER_CONFIG.BX.payoutRatio,
+  set: (v) => { bxState.payoutRatio = v }
+})
+const bPMin = computed({
+  get: () => bxState.multipleBand?.min ?? TICKER_CONFIG.BX.multipleBand.min,
+  set: (v) => { bxState.multipleBand.min = v }
+})
+const bPMax = computed({
+  get: () => bxState.multipleBand?.max ?? TICKER_CONFIG.BX.multipleBand.max,
+  set: (v) => { bxState.multipleBand.max = v }
+})
+const bG = computed({
+  get: () => bxState.dcfDefaults?.g ?? TICKER_CONFIG.BX.dcfDefaults.g,
+  set: (v) => { bxState.dcfDefaults.g = v }
+})
+const bD = computed({
+  get: () => (bDiscountRate.value * 100).toFixed(2),
+  set: (v) => { /* read-only; discount rate is CAPM-derived */ }
+})
+
+// GOOGL computed refs
+const gEps1 = computed({
+  get: () => googlState.forward?.y1 ?? TICKER_CONFIG.GOOGL.forward.y1,
+  set: (v) => { googlState.forward.y1 = v }
+})
+const gEps2 = computed({
+  get: () => googlState.forward?.y2 ?? TICKER_CONFIG.GOOGL.forward.y2,
+  set: (v) => { googlState.forward.y2 = v }
+})
+const gPeMin = computed({
+  get: () => googlState.multipleBand?.min ?? TICKER_CONFIG.GOOGL.multipleBand.min,
+  set: (v) => { googlState.multipleBand.min = v }
+})
+const gPeMax = computed({
+  get: () => googlState.multipleBand?.max ?? TICKER_CONFIG.GOOGL.multipleBand.max,
+  set: (v) => { googlState.multipleBand.max = v }
+})
+const gG = computed({
+  get: () => googlState.projectionGrowth ?? TICKER_CONFIG.GOOGL.projectionGrowth,
+  set: (v) => { googlState.projectionGrowth = v }
+})
+const gG5 = computed({
+  get: () => googlState.dcfDefaults?.g5 ?? TICKER_CONFIG.GOOGL.dcfDefaults.g5,
+  set: (v) => { googlState.dcfDefaults.g5 = v }
+})
+const gH5 = computed({
+  get: () => googlState.dcfDefaults?.h5 ?? TICKER_CONFIG.GOOGL.dcfDefaults.h5,
+  set: (v) => { googlState.dcfDefaults.h5 = v }
+})
+const gD = computed({
+  get: () => (TICKER_CONFIG.GOOGL.discountRateOverride * 100).toFixed(2),
+  set: (v) => { /* read-only; discount rate is hardcoded fallback */ }
+})
+const gBaseEPS = computed({
+  get: () => googlState.baseValue ?? TICKER_CONFIG.GOOGL.baseValue,
+  set: (v) => { googlState.baseValue = v }
+})
+const gR1 = computed({
+  get: () => googlState.revenueModel?.q1 ?? TICKER_CONFIG.GOOGL.revenueModel.q1,
+  set: (v) => { googlState.revenueModel.q1 = v }
+})
+const gR2 = computed({
+  get: () => googlState.revenueModel?.q2 ?? TICKER_CONFIG.GOOGL.revenueModel.q2,
+  set: (v) => { googlState.revenueModel.q2 = v }
+})
+const gR3 = computed({
+  get: () => googlState.revenueModel?.q3 ?? TICKER_CONFIG.GOOGL.revenueModel.q3,
+  set: (v) => { googlState.revenueModel.q3 = v }
+})
+const gR4 = computed({
+  get: () => googlState.revenueModel?.q4 ?? TICKER_CONFIG.GOOGL.revenueModel.q4,
+  set: (v) => { googlState.revenueModel.q4 = v }
+})
 
 // ─── Slider configs ───────────────────────────────────────────
 const dlr = n => '$' + n.toFixed(2)
@@ -258,98 +386,63 @@ function computeDcfBreakdown({ baseEPS, g5, h5, d, terminalMultiplier }) {
   }
 }
 
-const nvdaSliders = [
-  {
-    section: 'P/E Valuation',
-    items: [
-      { label: '1-year forward EPS',  model: nEps1,  min: 5,   max: 15,  step: 0.01, fmt: v => dlr(v) },
-      { label: '2-year forward EPS',  model: nEps2,  min: 5,   max: 20,  step: 0.01, fmt: v => dlr(v) },
-      { label: 'Min P/E multiple',    model: nPeMin, min: 15,  max: 80,  step: 0.1,  fmt: fmtX },
-      { label: 'Max P/E multiple',    model: nPeMax, min: 15,  max: 120, step: 0.1,  fmt: fmtX },
-      { label: 'Projection growth g', model: nG,     min: 10,  max: 80,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-    ],
-  },
-  {
-    section: 'Two-phase DCF',
-    items: [
-      { label: 'FY2026 base EPS',     model: nBaseEPS, min: 1,  max: 15,  step: 0.01, fmt: v => dlr(v) },
-      { label: 'Yr 1–5 growth (g5)',  model: nG5,    min: 10,  max: 120, step: 0.5,  fmt: v => v.toFixed(1) + '%' },
-      { label: 'Yr 6–10 growth (h5)', model: nH5,    min: 5,   max: 60,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
-      { label: 'Discount rate d',     model: nD,     min: 5,   max: 20,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-    ],
-  },
-  {
-    section: 'FY2027 Revenue Model',
-    items: [
-      { label: 'Q1 Apr 2026 ($B)', model: nR1, min: 40,  max: 130, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q2 Jul 2026 ($B)', model: nR2, min: 50,  max: 160, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q3 Oct 2026 ($B)', model: nR3, min: 60,  max: 190, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q4 Jan 2027 ($B)', model: nR4, min: 80,  max: 230, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-    ],
-  },
-]
+// ─── Slider config key → computed ref mapper ─────────────────────
+function buildSliderSections(ticker, sliderConfig, refMap, fmtMap) {
+  return sliderConfig.sections.map(section => ({
+    section: section.section,
+    items: section.items.map(item => {
+      const model = refMap[item.key]
+      const fmtFn = fmtMap[item.fmt]
+      return {
+        label: item.label,
+        model,
+        min: item.min,
+        max: item.max,
+        step: item.step,
+        fmt: fmtFn
+      }
+    })
+  }))
+}
 
-const bxSliders = [
-  {
-    section: 'P/DE Valuation',
-    items: [
-      { label: '1-year forward DE',   model: bDe1,  min: 3,  max: 12,  step: 0.01, fmt: v => dlr(v) },
-      { label: '2-year forward DE',   model: bDe2,  min: 3,  max: 15,  step: 0.01, fmt: v => dlr(v) },
-      { label: 'Payout ratio',        model: bPay,  min: 50, max: 100, step: 1,    fmt: v => v + '%' },
-      { label: 'Min P/DE multiple',   model: bPMin, min: 10, max: 40,  step: 0.1,  fmt: fmtX },
-      { label: 'Max P/DE multiple',   model: bPMax, min: 10, max: 50,  step: 0.1,  fmt: fmtX },
-      { label: 'Growth rate g',       model: bG,    min: 5,  max: 25,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-      { label: 'Discount rate d',     model: bD,    min: 4,  max: 15,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-    ],
-  },
-]
+// Format functions (used in computed() refs will format display)
+const formatters = {
+  dlr: v => dlr(v),
+  multiple: v => fmtX(v),
+  percent: v => v.toFixed(1) + '%',
+  billion: v => '$' + v.toFixed(1) + 'B',
+}
 
-// ─── GOOGL sliders ─────────────────────────────────────────────
-const gEps1    = ref(GOOGL_YAHOO_EPS_ESTIMATE_SEED.y2026)
-const gEps2    = ref(GOOGL_YAHOO_EPS_ESTIMATE_SEED.y2027)
-const gPeMin   = ref(+_gs.low.toFixed(1))
-const gPeMax   = ref(+_gs.high.toFixed(1))
-const gG       = ref(15)
-const gG5      = ref(20)
-const gH5      = ref(12)
-const gD       = ref(10)
-const gBaseEPS = ref(10.81)  // 2025 actual EPS
-// Revenue model (FY2026 = calendar 2026)
-const gR1 = ref(90)    // Q1 Jan–Mar 2026
-const gR2 = ref(97)    // Q2 Apr–Jun 2026
-const gR3 = ref(103)   // Q3 Jul–Sep 2026
-const gR4 = ref(110)   // Q4 Oct–Dec 2026
+// ─── Dynamic slider generation from config ─────────────────────
 
-const googlSliders = [
-  {
-    section: 'P/E Valuation',
-    items: [
-      { label: '1-year forward EPS',  model: gEps1,    min: 5,  max: 20,  step: 0.01, fmt: v => dlr(v) },
-      { label: '2-year forward EPS',  model: gEps2,    min: 5,  max: 25,  step: 0.01, fmt: v => dlr(v) },
-      { label: 'Min P/E multiple',    model: gPeMin,   min: 10, max: 50,  step: 0.1,  fmt: fmtX },
-      { label: 'Max P/E multiple',    model: gPeMax,   min: 10, max: 60,  step: 0.1,  fmt: fmtX },
-      { label: 'Projection growth g', model: gG,       min: 5,  max: 40,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-    ],
-  },
-  {
-    section: 'Two-phase DCF',
-    items: [
-      { label: '2025 base EPS',       model: gBaseEPS, min: 5,  max: 20,  step: 0.01, fmt: v => dlr(v) },
-      { label: 'Yr 1–5 growth (g5)',  model: gG5,      min: 5,  max: 50,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
-      { label: 'Yr 6–10 growth (h5)', model: gH5,      min: 3,  max: 30,  step: 0.5,  fmt: v => v.toFixed(1) + '%' },
-      { label: 'Discount rate d',     model: gD,       min: 5,  max: 15,  step: 0.1,  fmt: v => v.toFixed(1) + '%' },
-    ],
-  },
-  {
-    section: 'FY2026 Revenue Model',
-    items: [
-      { label: 'Q1 Jan–Mar 2026 ($B)', model: gR1, min: 60,  max: 150, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q2 Apr–Jun 2026 ($B)', model: gR2, min: 60,  max: 160, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q3 Jul–Sep 2026 ($B)', model: gR3, min: 60,  max: 170, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-      { label: 'Q4 Oct–Dec 2026 ($B)', model: gR4, min: 60,  max: 180, step: 0.5, fmt: v => '$' + v.toFixed(1) + 'B' },
-    ],
-  },
-]
+// NVDA: map config keys to computed refs
+const nvdaSliders = buildSliderSections('NVDA', TICKER_CONFIG.NVDA.sliderConfig, {
+  y1: nEps1, y2: nEps2,
+  minMultiple: nPeMin, maxMultiple: nPeMax,
+  projGrowth: nG,
+  baseValue: nBaseEPS,
+  dcfG5: nG5, dcfH5: nH5, discountRate: nD,
+  revQ1: nR1, revQ2: nR2, revQ3: nR3, revQ4: nR4,
+}, formatters)
+
+// BX: map config keys to computed refs
+const bxSliders = buildSliderSections('BX', TICKER_CONFIG.BX.sliderConfig, {
+  y1: bDe1, y2: bDe2,
+  payoutRatio: bPay,
+  minMultiple: bPMin, maxMultiple: bPMax,
+  projGrowth: bG,
+  discountRate: bD,
+}, formatters)
+
+// GOOGL: map config keys to computed refs
+const googlSliders = buildSliderSections('GOOGL', TICKER_CONFIG.GOOGL.sliderConfig, {
+  y1: gEps1, y2: gEps2,
+  minMultiple: gPeMin, maxMultiple: gPeMax,
+  projGrowth: gG,
+  baseValue: gBaseEPS,
+  dcfG5: gG5, dcfH5: gH5, discountRate: gD,
+  revQ1: gR1, revQ2: gR2, revQ3: gR3, revQ4: gR4,
+}, formatters)
 
 const currentSliders = computed(() => {
   if (activeTab.value === 'nvda')  return nvdaSliders
@@ -411,7 +504,7 @@ const bProjZoomed       = ref(false)
 const gProjZoomed       = ref(false)
 
 // ─── NVDA computed ────────────────────────────────────────────
-const nvdaPrice   = computed(() => prices['NVDA'] || 176.63)
+const nvdaPrice   = computed(() => prices['NVDA'] || TICKER_CONFIG.NVDA.priceFallback)
 const nvdaPrev    = computed(() => prevPrices['NVDA'] || nvdaPrice.value)
 const nvdaChg     = computed(() => nvdaPrice.value - nvdaPrev.value)
 const nvdaChgPct  = computed(() => nvdaChg.value / nvdaPrev.value)
@@ -426,20 +519,36 @@ const n2Range    = computed(() => `${dlr(nP2l.value)}\u2013${dlr(nP2h.value)}`)
 const n1RangeSub = computed(() => `${pct((nP1l.value - nvdaPrice.value) / nvdaPrice.value)} to ${pct((nP1h.value - nvdaPrice.value) / nvdaPrice.value)}`)
 const n2RangeSub = computed(() => `${pct((nP2l.value - nvdaPrice.value) / nvdaPrice.value)} to ${pct((nP2h.value - nvdaPrice.value) / nvdaPrice.value)}`)
 
-// Two-phase DCF floor (replaces old single-phase)
-const nFloor = computed(() => computeTwoPhaseDCF({
-  baseEPS: nBaseEPS.value,
-  g5: nG5.value / 100,
-  h5: nH5.value / 100,
-  d:  nD.value  / 100,
-  terminalMultiplier: 10,
+// NVDA Staged DCF with CAPM-derived discount rate
+const nDiscountRate = computed(() => {
+  const cfg = TICKER_CONFIG.NVDA
+  if (cfg.capm) {
+    return cfg.capm.rf + cfg.capm.beta * cfg.capm.erp
+  }
+  return cfg.discountRateOverride / 100  // fallback (not used for NVDA)
+})
+
+const nDcfFull = computed(() => computeStagedDCF({
+  baseValue: TICKER_CONFIG.NVDA.baseValue,
+  seedValues: TICKER_CONFIG.NVDA.seedValues,
+  growthStages: TICKER_CONFIG.NVDA.growthStages,
+  terminal: TICKER_CONFIG.NVDA.terminal,
+  discountRate: nDiscountRate.value,
 }))
-const nDcfBreakdown = computed(() => computeDcfBreakdown({
-  baseEPS: nBaseEPS.value,
-  g5: nG5.value / 100,
-  h5: nH5.value / 100,
-  d:  nD.value  / 100,
-  terminalMultiplier: 10,
+
+const nFloor = computed(() => nDcfFull.value.intrinsic)
+const nTerminalDiverges = computed(() => nDcfFull.value.terminalDiverges)
+const nTerminalPercent = computed(() => nDcfFull.value.terminalAsPercentOfIntrinsic)
+
+// Keep old breakdown for backward compatibility (will be replaced by nDcfFull)
+const nDcfBreakdown = computed(() => ({
+  valuePath: nDcfFull.value.valuePath,
+  pvPath: nDcfFull.value.pvPath,
+  intrinsic: nDcfFull.value.intrinsic,
+  Rx: nDcfFull.value.Rx,
+  mult: nDcfFull.value.mult,
+  terminalNumerator: nDcfFull.value.terminalNumerator,
+  pvTerminal: nDcfFull.value.pvTerminal,
 }))
 const nVsFloor = computed(() => (nFloor.value - nvdaPrice.value) / nvdaPrice.value)
 
@@ -533,7 +642,7 @@ const nConviction = computed(() => {
 })
 
 // ─── BX computed ──────────────────────────────────────────────
-const bxPrice   = computed(() => prices['BX'] || 114.52)
+const bxPrice   = computed(() => prices['BX'] || TICKER_CONFIG.BX.priceFallback)
 const bxPrev    = computed(() => prevPrices['BX'] || bxPrice.value)
 const bxChg     = computed(() => bxPrice.value - bxPrev.value)
 const bxChgPct  = computed(() => bxChg.value / bxPrev.value)
@@ -592,13 +701,26 @@ const bDeGainSeries = computed(() => [
   },
 ])
 
-const bFloor = computed(() => {
-  const d = bD.value / 100, g = bG.value / 100
-  let floor = 0, ann = bDe1.value
-  for (let y = 1; y <= 10; y++) { ann *= (1 + g); floor += ann / Math.pow(1 + d, y) }
-  floor += ann * 20 / Math.pow(1 + d, 10)
-  return floor
+// BX Staged DCF with CAPM-derived discount rate (uses DpS, not DE)
+const bDiscountRate = computed(() => {
+  const cfg = TICKER_CONFIG.BX
+  if (cfg.capm) {
+    return cfg.capm.rf + cfg.capm.beta * cfg.capm.erp
+  }
+  return cfg.discountRateOverride / 100  // fallback
 })
+
+const bDcfFull = computed(() => computeStagedDCF({
+  baseValue: TICKER_CONFIG.BX.baseValue,
+  seedValues: TICKER_CONFIG.BX.seedValues,
+  growthStages: TICKER_CONFIG.BX.growthStages,
+  terminal: TICKER_CONFIG.BX.terminal,
+  discountRate: bDiscountRate.value,
+}))
+
+const bFloor = computed(() => bDcfFull.value.intrinsic)
+const bTerminalDiverges = computed(() => bDcfFull.value.terminalDiverges)
+const bTerminalPercent = computed(() => bDcfFull.value.terminalAsPercentOfIntrinsic)
 const bVsFloor = computed(() => (bFloor.value - bxPrice.value) / bxPrice.value)
 
 const bDeYears  = computed(() => {
@@ -634,7 +756,7 @@ const bConviction = computed(() => {
 })
 
 // ─── GOOGL computed ────────────────────────────────────────────
-const googlPrice  = computed(() => prices['GOOGL'] || 160.00)
+const googlPrice  = computed(() => prices['GOOGL'] || TICKER_CONFIG.GOOGL.priceFallback)
 const googlPrev   = computed(() => prevPrices['GOOGL'] || googlPrice.value)
 const googlChg    = computed(() => googlPrice.value - googlPrev.value)
 const googlChgPct = computed(() => googlChg.value / googlPrev.value)
@@ -649,19 +771,28 @@ const g2Range    = computed(() => `${dlr(gP2l.value)}\u2013${dlr(gP2h.value)}`)
 const g1RangeSub = computed(() => `${pct((gP1l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP1h.value - googlPrice.value) / googlPrice.value)}`)
 const g2RangeSub = computed(() => `${pct((gP2l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP2h.value - googlPrice.value) / googlPrice.value)}`)
 
-const gFloor = computed(() => computeTwoPhaseDCF({
-  baseEPS: gBaseEPS.value,
-  g5: gG5.value / 100,
-  h5: gH5.value / 100,
-  d:  gD.value  / 100,
-  terminalMultiplier: 10,
+// GOOGL Staged DCF with fixed discount rate (no CAPM source yet)
+const gDcfFull = computed(() => computeStagedDCF({
+  baseValue: TICKER_CONFIG.GOOGL.baseValue,
+  seedValues: TICKER_CONFIG.GOOGL.seedValues,
+  growthStages: TICKER_CONFIG.GOOGL.growthStages,
+  terminal: TICKER_CONFIG.GOOGL.terminal,
+  discountRate: TICKER_CONFIG.GOOGL.discountRateOverride,
 }))
-const gDcfBreakdown = computed(() => computeDcfBreakdown({
-  baseEPS: gBaseEPS.value,
-  g5: gG5.value / 100,
-  h5: gH5.value / 100,
-  d:  gD.value  / 100,
-  terminalMultiplier: 10,
+
+const gFloor = computed(() => gDcfFull.value.intrinsic)
+const gTerminalDiverges = computed(() => gDcfFull.value.terminalDiverges)
+const gTerminalPercent = computed(() => gDcfFull.value.terminalAsPercentOfIntrinsic)
+
+// Keep old breakdown for backward compat
+const gDcfBreakdown = computed(() => ({
+  valuePath: gDcfFull.value.valuePath,
+  pvPath: gDcfFull.value.pvPath,
+  intrinsic: gDcfFull.value.intrinsic,
+  Rx: gDcfFull.value.Rx,
+  mult: gDcfFull.value.mult,
+  terminalNumerator: gDcfFull.value.terminalNumerator,
+  pvTerminal: gDcfFull.value.pvTerminal,
 }))
 const gVsFloor = computed(() => (gFloor.value - googlPrice.value) / googlPrice.value)
 
@@ -1661,6 +1792,13 @@ const throttledGOOGLPriceCharts = throttle(() => {
 
 // ─── Lifecycle ────────────────────────────────────────────────
 onMounted(async () => {
+  // ─── Initialize reactive stores from config ─────────────────
+  // Computed getters/setters now expose these to the template.
+  // No watch() syncing needed — computed handles two-way binding.
+  Object.assign(nvdaState, cloneConfigForReactive(TICKER_CONFIG.NVDA))
+  Object.assign(bxState, cloneConfigForReactive(TICKER_CONFIG.BX))
+  Object.assign(googlState, cloneConfigForReactive(TICKER_CONFIG.GOOGL))
+
   isLg.value = window.matchMedia('(min-width: 1024px)').matches
   sidebarOpen.value = isLg.value
   window.addEventListener('resize', checkBreakpoint)
@@ -1896,6 +2034,18 @@ watch(watchlist, () => {
           </div>
         </div>
 
+        <!-- ── Scenario presets ───────────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Scenario presets — reconfigurate the model</div>
+          <div class="insight">Quick-load predefined scenarios: growth rates, terminal assumptions, and P/E multiples. Each preset applies a complete configuration to the DCF and valuation models. Click to apply; sliders adjust independently afterward.</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button v-for="(scenario, key) in TICKER_CONFIG.NVDA.scenarios" :key="key" class="scenario-btn" @click="applyNVDAScenario(key)">
+              <div class="scenario-label">{{ scenario.label }}</div>
+              <div class="scenario-desc">{{ scenario.description }}</div>
+            </button>
+          </div>
+        </div>
+
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
@@ -1964,8 +2114,8 @@ watch(watchlist, () => {
 
         <!-- ── Two-phase DCF card ─────────────────────────────── -->
         <div class="card">
-          <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">This is a present-value estimate, not a price target. It grows EPS for 10 years, discounts those future dollars back at {{ nD }}%, then adds a conservative terminal value of year-10 EPS &times; 10.</div>
+          <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
+          <div class="insight">This is a present-value estimate, not a price target. It grows consensus EPS for 2 years, then applies staged growth rates for 8 years, discounts those future dollars back at {{ nD }}%, and derives terminal value using the Rx formula.</div>
           <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
           <div class="targets">
             <div class="tcard">
@@ -2180,9 +2330,13 @@ watch(watchlist, () => {
 
         <!-- BX DCF -->
         <div class="card">
-          <div class="card-title">10yr intrinsic floor &mdash; DCF result</div>
+          <div class="card-title">20yr staged DCF (DpS-based) &mdash; intrinsic floor</div>
+          <div class="insight">This uses Distributions per Share (not DE) and applies the Rx-derived terminal formula over 20 years. Terminal growth (12%) exceeds discount rate (10.78%), so terminal value grows with each additional year &mdash; this is intentional per the source analysis.</div>
+          <div class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
+            <strong>⚠️ Divergent terminal:</strong> Terminal value represents ~{{ (bTerminalPercent * 100).toFixed(0) }}% of intrinsic floor. The 20-year terminal count is a material assumption; adjust it to stress-test the floor.
+          </div>
           <div class="targets">
-            <div class="tcard"><div class="tlabel">Intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div><div class="tret">what future DE is worth today</div></div>
+            <div class="tcard"><div class="tlabel">Intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div><div class="tret">DpS discounted to today</div></div>
             <div class="tcard"><div class="tlabel">Price vs floor</div><div class="tprice" :class="colCls(bVsFloor)">{{ pct(bVsFloor) }}</div><div class="tret">{{ bVsFloor >= 0 ? 'Appears undervalued vs floor' : 'Trades above DCF floor' }}</div></div>
           </div>
         </div>
@@ -2365,10 +2519,14 @@ watch(watchlist, () => {
           <p class="note">Dotted lines extrapolate using projection growth g and the same P/E range &mdash; not a forecast.</p>
         </div>
 
-        <!-- ── Two-phase DCF card ─────────────────────────────── -->
+        <!-- ── Staged DCF card ─────────────────────────────── -->
         <div class="card">
-          <div class="card-title">Two-phase DCF &mdash; intrinsic floor</div>
-          <div class="insight">This is a present-value estimate, not a price target. It grows EPS for 10 years, discounts those future dollars back at {{ gD }}%, then adds a conservative terminal value of year-10 EPS &times; 10.</div>
+          <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
+          <div class="insight">This is a present-value estimate, not a price target. It grows EPS in two stages (20% for 5 years, then 12% for 5 years), discounts those future dollars back at {{ gD }}%, and derives terminal value using the Rx formula (not a fixed multiple).</div>
+          <div class="insight">⚠️ <strong>Economics changed from the previous fixed-10x method.</strong> Floor shifted from $341.65 to {{ dlr(gFloor) }} (+5.7%) due to the terminal method. Terminal value is now derived from the Rx formula rather than hardcoded. Growth inputs remain unreconciled to a source analysis.</div>
+          <div v-if="gTerminalDiverges" class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
+            <strong>⚠️ Divergent terminal:</strong> Terminal growth ({{ (TICKER_CONFIG.GOOGL.terminal.growth * 100).toFixed(1) }}%) exceeds discount rate ({{ gD }}%), so terminal value grows with each additional year. Terminal value represents ~{{ (gTerminalPercent * 100).toFixed(0) }}% of intrinsic floor.
+          </div>
           <div class="insight">Current breakdown: {{ dlr(gDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(gDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(gDcfBreakdown.floor) }}.</div>
           <div class="targets">
             <div class="tcard">
@@ -2669,4 +2827,34 @@ tr:hover td { background: var(--c-bg2); }
 .gterm:last-child { border-bottom: none; }
 .gterm-name { font-size: 13px; font-weight: 500; color: var(--c-text); }
 .gterm-def { font-size: 13px; color: var(--c-text2); line-height: 1.5; }
+
+/* ─── Scenario buttons ───────────────────────────────────────── */
+.scenario-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--c-bg2);
+  border: 0.5px solid var(--c-border2);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  text-align: left;
+}
+.scenario-btn:hover {
+  background: var(--c-bg);
+  border-color: var(--c-border);
+}
+.scenario-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-text);
+}
+.scenario-desc {
+  font-size: 11px;
+  color: var(--c-text2);
+  line-height: 1.4;
+}
 </style>

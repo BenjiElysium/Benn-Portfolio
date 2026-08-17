@@ -1,0 +1,50 @@
+{
+  "NVDA": {
+    "ticker": "NVDA",
+    "bandMin": 39.5,
+    "bandMax": 58.9,
+    "forwardY1": 8.94,
+    "forwardY2": 12.65,
+    "target1yrLow": 353.13,
+    "target1yrHigh": 526.57,
+    "target2yrLow": 499.68,
+    "target2yrHigh": 745.09,
+    "dcfFloor": "1248.64",
+    "baseValue": 4.9,
+    "terminalMultiplier": 10,
+    "discountRate": 12,
+    "priceFallback": 176.63
+  },
+  "BX": {
+    "ticker": "BX",
+    "bandMin": 22,
+    "bandMax": 29,
+    "forwardY1": 6.33,
+    "forwardY2": 7.9,
+    "target1yrLow": 139.26,
+    "target1yrHigh": 183.57,
+    "target2yrLow": 173.8,
+    "target2yrHigh": 229.1,
+    "dcfFloor": "205.02",
+    "baseValue": 5.84,
+    "terminalMultiplier": 20,
+    "discountRate": 8,
+    "priceFallback": 114.52
+  },
+  "GOOGL": {
+    "ticker": "GOOGL",
+    "bandMin": 18,
+    "bandMax": 26,
+    "forwardY1": 14.24,
+    "forwardY2": 14.49,
+    "target1yrLow": 256.32,
+    "target1yrHigh": 370.24,
+    "target2yrLow": 260.82,
+    "target2yrHigh": 376.74,
+    "dcfFloor": "341.65",
+    "baseValue": 10.81,
+    "terminalMultiplier": 10,
+    "discountRate": 10,
+    "priceFallback": 160
+  }
+}

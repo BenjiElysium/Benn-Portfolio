@@ -56,41 +56,100 @@ export function applyHistoryCutoff(data, cutoffYear) {
 // ─── DCF models ───────────────────────────────────────────────────────────────
 
 /**
- * Single-phase DCF (existing NVDA / BX model).
- * @param {{ baseMetric:number, g:number, d:number, terminalMultiplier:number }} p
- * @returns {number} intrinsic floor
- */
-export function computeSinglePhaseDCF({ baseMetric, g, d, terminalMultiplier }) {
-  let floor = 0
-  let ann = baseMetric
-  for (let y = 1; y <= 10; y++) {
-    ann *= (1 + g)
-    floor += ann / Math.pow(1 + d, y)
-  }
-  floor += ann * terminalMultiplier / Math.pow(1 + d, 10)
-  return floor
-}
-
-/**
- * Two-phase DCF: high-growth phase (years 1–5) then deceleration (years 6–10).
- * Terminal value = year-10 earnings × terminalMultiplier, discounted back.
+ * Staged DCF with configurable growth phases and Rx-derived terminal multiple.
  *
- * @param {{ baseEPS:number, g5:number, h5:number, d:number, terminalMultiplier:number }} p
- * @returns {number} intrinsic floor
+ * @param {{
+ *   baseValue: number,           — starting value (if no seeds)
+ *   seedValues?: number[],       — analyst consensus years (e.g., [8.98, 12.79])
+ *   growthStages: {years:number, rate:number}[], — phases after seeds
+ *   terminal: {growth:number, years:number},    — terminal growth rate and projection years
+ *   discountRate: number         — d (e.g., 0.1556 = 15.56%)
+ * }} p
+ * @returns {{
+ *   valuePath: number[],         — projection years 1..N
+ *   pvPath: number[],            — present values year by year
+ *   Rx: number,                  — (1 + g_terminal) / (1 + d)
+ *   mult: number,                — Rx-derived terminal multiple
+ *   terminalNumerator: number,   — V[N] * mult (terminal value at year N)
+ *   pvTerminal: number,          — PV of terminal numerator
+ *   intrinsic: number            — sum(PV(V)) + PV(terminal)
+ *   terminalDiverges: boolean    — true if terminal growth >= discount rate (value grows unbounded)
+ *   terminalAsPercentOfIntrinsic: number — terminal value as % of total intrinsic
+ * }}
  */
-export function computeTwoPhaseDCF({ baseEPS, g5, h5, d, terminalMultiplier }) {
-  let floor = 0
-  let ann = baseEPS
-  for (let y = 1; y <= 5; y++) {
-    ann *= (1 + g5)
-    floor += ann / Math.pow(1 + d, y)
+export function computeStagedDCF({
+  baseValue,
+  seedValues,
+  growthStages,
+  terminal,
+  discountRate,
+}) {
+  const d = discountRate
+  const valuePath = []
+  const pvPath = []
+
+  // Start with seeds or baseValue
+  let current = baseValue
+  let yearIndex = 1
+
+  // Seed years (analyst consensus)
+  if (seedValues && seedValues.length > 0) {
+    for (const seed of seedValues) {
+      valuePath.push(seed)
+      const pv = seed / Math.pow(1 + d, yearIndex)
+      pvPath.push(pv)
+      current = seed
+      yearIndex++
+    }
   }
-  for (let y = 6; y <= 10; y++) {
-    ann *= (1 + h5)
-    floor += ann / Math.pow(1 + d, y)
+
+  // Growth stages (derived years)
+  for (const stage of growthStages) {
+    for (let i = 0; i < stage.years; i++) {
+      current *= (1 + stage.rate)
+      valuePath.push(current)
+      const pv = current / Math.pow(1 + d, yearIndex)
+      pvPath.push(pv)
+      yearIndex++
+    }
   }
-  floor += ann * terminalMultiplier / Math.pow(1 + d, 10)
-  return floor
+
+  // Terminal: Rx method
+  // Rx = (1 + g_terminal) / (1 + d)
+  // mult = Rx * ((Rx^years - 1) / (Rx - 1))
+  // This is the PV factor for an annuity growing at g_terminal
+  const g_t = terminal.growth
+  const t_years = terminal.years
+  const Rx = (1 + g_t) / (1 + d)
+
+  // Check if terminal growth >= discount rate (divergence)
+  const terminalDiverges = g_t >= d
+
+  let mult
+  if (Math.abs(Rx - 1) < 1e-10) {
+    // Degenerate case: Rx ≈ 1
+    mult = t_years
+  } else {
+    mult = Rx * ((Math.pow(Rx, t_years) - 1) / (Rx - 1))
+  }
+
+  const terminalNumerator = current * mult
+  const pvTerminal = terminalNumerator / Math.pow(1 + d, yearIndex - 1)
+
+  const intrinsic = pvPath.reduce((a, b) => a + b, 0) + pvTerminal
+  const terminalAsPercentOfIntrinsic = intrinsic > 0 ? pvTerminal / intrinsic : 0
+
+  return {
+    valuePath,
+    pvPath,
+    Rx,
+    mult,
+    terminalNumerator,
+    pvTerminal,
+    intrinsic,
+    terminalDiverges,
+    terminalAsPercentOfIntrinsic,
+  }
 }
 
 // ─── Finnhub metric-series extraction ────────────────────────────────────────
