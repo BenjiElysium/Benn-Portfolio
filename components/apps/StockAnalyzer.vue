@@ -90,9 +90,10 @@ const NVDA_PE_CANONICAL = [
 ]
 
 // Live current-quarter P/E — appended only once the quote resolves.
-// TTM normalized EPS = config baseValue (trailing full-year normalized EPS).
+// Denominator is the ROLLING TTM normalized EPS (config ttmEps), not the
+// annual baseValue: FY2026 − Q1 FY2026 + Q1 FY2027.
 const nCurrentPE = computed(() =>
-  nPriceReady.value ? +(nvdaPrice.value / TICKER_CONFIG.NVDA.baseValue).toFixed(2) : null
+  nPriceReady.value ? +(nvdaPrice.value / TICKER_CONFIG.NVDA.ttmEps).toFixed(2) : null
 )
 
 // Newest-first (existing orientation; charts reverse to chronological).

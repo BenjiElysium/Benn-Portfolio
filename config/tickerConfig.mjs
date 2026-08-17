@@ -9,8 +9,14 @@ export const NVDA_CONFIG = {
   ticker: 'NVDA',
   metric: 'EPS',
   valuationMetric: 'EPS',
-  baseValue: 4.77,  // normalized non-GAAP (not GAAP 4.90)
+  baseValue: 4.77,  // normalized non-GAAP (not GAAP 4.90) — DCF seed, NOT the live P/E denominator
   baseValueLabel: 'FY2026 normalized non-GAAP EPS',
+  // Rolling trailing-twelve-months normalized non-GAAP EPS for the live P/E point.
+  // Covers Q2 FY2026 (1.05) + Q3 FY2026 (1.30) + Q4 FY2026 (1.46) + Q1 FY2027 (3.02):
+  // FY2026 total 4.77 − Q1 FY2026 0.96 + Q1 FY2027 3.02 = 6.83.
+  // As of Q1 FY2027 results (quarter ended 2026-04-26); consistent with the source
+  // spreadsheet's TTM P/E of 33.0 at $225.31. Distinct from baseValue by design.
+  ttmEps: 6.83,
   forward: { y1: 8.98, y2: 12.79 },  // updated consensus estimates
   multipleBand: { min: 39.5, max: 58.9 },
   projectionGrowth: 33.6,
