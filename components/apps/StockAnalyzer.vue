@@ -7,7 +7,7 @@ import {
   computeStagedDCF,
   getVerdict,
 } from '~/composables/useStockValuation.js'
-import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario } from '~/config/tickerConfig.mjs'
+import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario, isStale, mostRecentAsOf, daysSince } from '~/config/tickerConfig.mjs'
 
 // ─── Chart.js (dynamic import — SSR-safe) ─────────────────────
 let ChartJS = null
@@ -36,6 +36,26 @@ const gPriceState = computed(() => priceStates['GOOGL'] ?? 'pending')
 const nPriceReady = computed(() => nPriceState.value === 'resolved')
 const bPriceReady = computed(() => bPriceState.value === 'resolved')
 const gPriceReady = computed(() => gPriceState.value === 'resolved')
+
+// ─── Staleness guard ──────────────────────────────────────────
+// Informational amber note when a ticker's newest financial input is older
+// than STALENESS_THRESHOLD_DAYS. Unrelated to price pending/error states.
+// clientNow is set on mount so SSR and client render identically.
+const clientNow = ref(null)
+const staleness = computed(() => {
+  if (!clientNow.value) return {}
+  const out = {}
+  for (const t of ['NVDA', 'BX', 'GOOGL']) {
+    if (isStale(t, clientNow.value)) {
+      const asOf = mostRecentAsOf(t)
+      out[t] = {
+        days: daysSince(asOf, clientNow.value),
+        formatted: new Date(asOf).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }),
+      }
+    }
+  }
+  return out
+})
 const statusText = ref('Fetching prices...')
 const livePaused = ref(false)
 const POLL_INTERVAL_MS = 30_000
@@ -76,18 +96,10 @@ const BASES = {
 // ─── NVDA Historical P/E seed ─────────────────────────────────
 // Hardcoded 7-quarter seed (newest first). Chart reverses to chronological.
 // Overridden at mount if Finnhub returns ≥8 quarters since 2016.
-// Canonical completed-quarter series from the source analysis. NEVER
-// overwritten by API data — Finnhub contributes only the live "Current"
-// point (price ÷ TTM normalized EPS) via the quote fetch. Chronological.
-const NVDA_PE_CANONICAL = [
-  { label: 'Oct 2024', date: '2024-10-31', value: 62.24 },
-  { label: 'Jan 2025', date: '2025-01-31', value: 47.40 },
-  { label: 'Apr 2025', date: '2025-04-30', value: 37.05 },
-  { label: 'Jul 2025', date: '2025-07-31', value: 57.38 },
-  { label: 'Oct 2025', date: '2025-10-31', value: 57.69 },
-  { label: 'Jan 2026', date: '2026-01-31', value: 47.31 },
-  { label: 'Apr 2026', date: '2026-04-30', value: 40.70 },
-]
+// Canonical completed-quarter series from config.historicalMultiple (dated,
+// chronological, single source of truth). NEVER overwritten by API data —
+// Finnhub contributes only the live "Current" point (price ÷ TTM EPS).
+const NVDA_PE_CANONICAL = TICKER_CONFIG.NVDA.historicalMultiple
 
 // Live current-quarter P/E — appended only once the quote resolves.
 // Denominator is the ROLLING TTM normalized EPS (config ttmEps), not the
@@ -188,16 +200,8 @@ const EPS_VS_GAIN = [
 
 // ─── GOOGL Historical P/E seed ────────────────────────────────
 // Newest-first. Overridden at mount if Finnhub returns ≥8 quarters since 2016.
-// Canonical completed-quarter series — never overwritten by API data.
-// Live "Current" point is computed from price ÷ TTM EPS (config baseValue).
-const GOOGL_PE_CANONICAL = [
-  { label: 'Oct 2023', date: '2023-10-31', value: 27.05 },
-  { label: 'Jan 2024', date: '2024-01-31', value: 26.82 },
-  { label: 'Apr 2024', date: '2024-04-30', value: 25.10 },
-  { label: 'Jul 2024', date: '2024-07-31', value: 22.03 },
-  { label: 'Oct 2024', date: '2024-10-31', value: 23.55 },
-  { label: 'Jan 2025', date: '2025-01-31', value: 22.48 },
-]
+// Canonical completed-quarter series from config (see NVDA note).
+const GOOGL_PE_CANONICAL = TICKER_CONFIG.GOOGL.historicalMultiple
 
 // Denominator is the ROLLING TTM diluted EPS ex-equity-gains (config ttmEps),
 // not the annual baseValue.
@@ -2009,6 +2013,7 @@ onMounted(async () => {
   // ─── Initialize reactive stores from config ─────────────────
   // Computed getters/setters now expose these to the template.
   // No watch() syncing needed — computed handles two-way binding.
+  clientNow.value = new Date()
   Object.assign(nvdaState, cloneConfigForReactive(TICKER_CONFIG.NVDA))
   Object.assign(bxState, cloneConfigForReactive(TICKER_CONFIG.BX))
   Object.assign(googlState, cloneConfigForReactive(TICKER_CONFIG.GOOGL))
@@ -2206,6 +2211,10 @@ watch(watchlist, () => {
 
       <!-- ═══════════ NVDA TAB ═══════════ -->
       <div v-show="activeTab === 'nvda'" class="space-y-5">
+
+        <div v-if="staleness.NVDA" class="staleness-note">
+          Financial inputs last updated {{ staleness.NVDA.formatted }}, {{ staleness.NVDA.days }} days ago. A quarter may have reported since — verify before relying on the current multiple.
+        </div>
 
         <!-- Metric cards -->
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -2542,6 +2551,10 @@ watch(watchlist, () => {
       <!-- ═══════════ BX TAB ═══════════ -->
       <div v-show="activeTab === 'bx'" class="space-y-5">
 
+        <div v-if="staleness.BX" class="staleness-note">
+          Financial inputs last updated {{ staleness.BX.formatted }}, {{ staleness.BX.days }} days ago. A quarter may have reported since — verify before relying on the current multiple.
+        </div>
+
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="metric-card">
             <p class="mc-label">Current price</p>
@@ -2747,6 +2760,10 @@ watch(watchlist, () => {
 
       <!-- ═══════════ GOOGL TAB ═══════════ -->
       <div v-show="activeTab === 'googl'" class="space-y-5">
+
+        <div v-if="staleness.GOOGL" class="staleness-note">
+          Financial inputs last updated {{ staleness.GOOGL.formatted }}, {{ staleness.GOOGL.days }} days ago. A quarter may have reported since — verify before relying on the current multiple.
+        </div>
 
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="metric-card">
@@ -3245,5 +3262,16 @@ tr:hover td { background: var(--c-bg2); }
   color: #71717a;
   font-style: italic;
   font-size: 15px;
+}
+
+/* ── Staleness note (informational, not an error) ────────────── */
+.staleness-note {
+  border-left: 2px solid var(--c-amber);
+  background: rgba(217, 119, 6, 0.06);
+  color: var(--c-amber);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-radius: 6px;
 }
 </style>

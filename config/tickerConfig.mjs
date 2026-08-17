@@ -11,6 +11,7 @@ export const NVDA_CONFIG = {
   valuationMetric: 'EPS',
   baseValue: 4.77,  // normalized non-GAAP (not GAAP 4.90) — DCF seed, NOT the live P/E denominator
   baseValueLabel: 'FY2026 normalized non-GAAP EPS',
+  baseValueMeta: { asOf: '2026-01-25', source: 'Q4/FY2026 earnings release', verified: true },
   // Rolling trailing-twelve-months non-GAAP diluted EPS for the live P/E point.
   // Construction: FY2026 total − Q1 FY2026 + Q1 FY2027 = 4.77 − 0.81 + 1.87 = 5.83.
   // All figures verified against NVIDIA earnings releases (nvidianews.nvidia.com),
@@ -28,7 +29,11 @@ export const NVDA_CONFIG = {
   // which no combination of filed quarters reproduces — likely a forward/blended
   // cell, flagged upstream. Do not re-derive this field from that anchor.
   ttmEps: 5.83,
+  ttmEpsMeta: { asOf: '2026-04-26', source: 'Q1 FY2027 earnings release', verified: true },
   forward: { y1: 8.98, y2: 12.79 },  // updated consensus estimates
+  // Consensus figures from the source-spreadsheet snapshot; exact capture date
+  // not independently traceable, bounded by the snapshot period → verified: false.
+  forwardMeta: { asOf: '2026-04-26', source: 'consensus snapshot (source spreadsheet)', verified: false },
   multipleBand: { min: 39.5, max: 58.9 },
   projectionGrowth: 33.6,
   capm: { rf: 0.0456, erp: 0.055, beta: 2.00 },  // d = 15.56%
@@ -42,14 +47,18 @@ export const NVDA_CONFIG = {
   // Seeds internal chart/positioning math only. UI shows a skeleton until the
   // live quote resolves — never displayed as a live price, never used for verdicts.
   priceFallback: 227.00,
+  // Canonical completed-quarter TTM P/E series (chronological, dated). Single
+  // source of truth for the component; the live Current point is derived from
+  // price ÷ ttmEps and is never stored here.
+  // Dates are NVDA's actual fiscal quarter ends (not calendar month ends).
   historicalMultiple: [
-    { label: 'Current', value: 35.24 },
-    { label: 'Jan 2026', value: 47.31 },
-    { label: 'Oct 2025', value: 57.69 },
-    { label: 'Jul 2025', value: 57.38 },
-    { label: 'Apr 2025', value: 37.05 },
-    { label: 'Jan 2025', value: 47.40 },
-    { label: 'Oct 2024', value: 62.24 },
+    { label: 'Oct 2024', date: '2024-10-27', value: 62.24 },
+    { label: 'Jan 2025', date: '2025-01-26', value: 47.40 },
+    { label: 'Apr 2025', date: '2025-04-27', value: 37.05 },
+    { label: 'Jul 2025', date: '2025-07-27', value: 57.38 },
+    { label: 'Oct 2025', date: '2025-10-26', value: 57.69 },
+    { label: 'Jan 2026', date: '2026-01-25', value: 47.31 },
+    { label: 'Apr 2026', date: '2026-04-26', value: 40.70 },
   ],
   sliderConfig: {
     sections: [
@@ -141,7 +150,10 @@ export const BX_CONFIG = {
   // (1.52) = 6.15. Distinct from baseValue (DpS) by design. Nothing UNVERIFIED.
   ttmDePerShare: 6.15,
   ttmDeLabel: 'LTM Q2 2026',
+  ttmDePerShareMeta: { asOf: '2026-06-30', source: 'Q2 2026 earnings release (LTM as stated)', verified: true },
   forward: { y1: 6.03, y2: 7.56 },  // corrected DE estimates for P/DE targets
+  // DE consensus from the source analysis; exact capture date not independently traceable.
+  forwardMeta: { asOf: '2026-06-30', source: 'DE consensus snapshot (source analysis)', verified: false },
   forwardDE: { y1: 6.03, y2: 7.56 },  // explicit DE for multiple calcs (DE ≠ DpS)
   multipleBand: { min: 22, max: 29 },  // applied to DE, not DpS
   projectionGrowth: 10,
@@ -233,6 +245,7 @@ export const GOOGL_CONFIG = {
   valuationMetric: 'EPS',
   baseValue: 10.81,  // 2025 full-year GAAP diluted EPS — DCF seed, NOT the live P/E denominator
   baseValueLabel: '2025 actual EPS',
+  baseValueMeta: { asOf: '2025-12-31', source: 'Q4/FY2025 earnings release', verified: true },
   // Rolling trailing-twelve-months diluted EPS for the live P/E point, excluding
   // unrealized equity-securities gains (SpaceX/Anthropic marks) using the
   // per-share effects stated in Alphabet's own releases:
@@ -243,7 +256,10 @@ export const GOOGL_CONFIG = {
   //   TTM = 11.30. All figures traceable to Alphabet quarterly earnings releases;
   //   as of the Q2 2026 release (2026-07-22). Nothing UNVERIFIED.
   ttmEps: 11.30,
+  ttmEpsMeta: { asOf: '2026-06-30', source: 'Q2 2026 earnings release (ex equity gains)', verified: true },
   forward: { y1: 14.24, y2: 14.49 },
+  // Yahoo consensus seed; exact capture date not independently traceable.
+  forwardMeta: { asOf: '2026-06-30', source: 'Yahoo consensus snapshot', verified: false },
   multipleBand: { min: 18.0, max: 26.0 },
   projectionGrowth: 15,
   capm: null,  // TODO: no source analysis exists; derive beta before switching to CAPM
@@ -257,14 +273,14 @@ export const GOOGL_CONFIG = {
   revenueModel: { q1: 90, q2: 97, q3: 103, q4: 110 },
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
   priceFallback: 344.72,
+  // Canonical completed-quarter TTM P/E series (chronological, dated) — see NVDA note.
   historicalMultiple: [
-    { label: 'Current', value: 20.12 },
-    { label: 'Jan 2025', value: 22.48 },
-    { label: 'Oct 2024', value: 23.55 },
-    { label: 'Jul 2024', value: 22.03 },
-    { label: 'Apr 2024', value: 25.10 },
-    { label: 'Jan 2024', value: 26.82 },
-    { label: 'Oct 2023', value: 27.05 },
+    { label: 'Oct 2023', date: '2023-10-31', value: 27.05 },
+    { label: 'Jan 2024', date: '2024-01-31', value: 26.82 },
+    { label: 'Apr 2024', date: '2024-04-30', value: 25.10 },
+    { label: 'Jul 2024', date: '2024-07-31', value: 22.03 },
+    { label: 'Oct 2024', date: '2024-10-31', value: 23.55 },
+    { label: 'Jan 2025', date: '2025-01-31', value: 22.48 },
   ],
   sliderConfig: {
     sections: [
@@ -301,6 +317,35 @@ export const TICKER_CONFIG = {
   NVDA: NVDA_CONFIG,
   BX: BX_CONFIG,
   GOOGL: GOOGL_CONFIG,
+}
+
+// ─── Staleness guard ─────────────────────────────────────────────────────────
+// 100 rather than 90 gives a grace period past quarter-end for the release itself.
+export const STALENESS_THRESHOLD_DAYS = 100
+
+/** Whole days elapsed since an ISO date (UTC-parsed). */
+export function daysSince(isoDate, now = new Date()) {
+  return Math.floor((now.getTime() - Date.parse(isoDate)) / 86_400_000)
+}
+
+/** Newest asOf across a ticker's dated financial inputs (meta fields + historical series). */
+export function mostRecentAsOf(ticker, config = TICKER_CONFIG) {
+  const cfg = config[ticker]
+  if (!cfg) return null
+  const dates = []
+  for (const key of ['ttmEpsMeta', 'ttmDePerShareMeta', 'baseValueMeta', 'forwardMeta']) {
+    if (cfg[key]?.asOf) dates.push(cfg[key].asOf)
+  }
+  for (const entry of cfg.historicalMultiple ?? []) {
+    if (entry.date) dates.push(entry.date)
+  }
+  return dates.length ? dates.sort().at(-1) : null  // ISO dates sort lexicographically
+}
+
+/** True when the newest financial input is older than the staleness threshold. */
+export function isStale(ticker, now = new Date(), config = TICKER_CONFIG) {
+  const asOf = mostRecentAsOf(ticker, config)
+  return asOf != null && daysSince(asOf, now) > STALENESS_THRESHOLD_DAYS
 }
 
 /**
