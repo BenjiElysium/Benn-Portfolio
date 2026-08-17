@@ -4,7 +4,6 @@ import { buildProjectionChart } from '~/composables/useProjectionChart.js'
 import {
   computeHistoricalStats,
   computeStagedDCF,
-  computeSinglePhaseDCF,
   extractFinnhubPESeries,
 } from '~/composables/useStockValuation.js'
 import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario } from '~/config/tickerConfig.mjs'
