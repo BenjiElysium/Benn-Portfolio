@@ -3,8 +3,8 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { buildProjectionChart } from '~/composables/useProjectionChart.js'
 import {
   computeHistoricalStats,
+  computeLinearTrend,
   computeStagedDCF,
-  extractFinnhubPESeries,
   getVerdict,
 } from '~/composables/useStockValuation.js'
 import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario } from '~/config/tickerConfig.mjs'
@@ -76,26 +76,32 @@ const BASES = {
 // ─── NVDA Historical P/E seed ─────────────────────────────────
 // Hardcoded 7-quarter seed (newest first). Chart reverses to chronological.
 // Overridden at mount if Finnhub returns ≥8 quarters since 2016.
-const NVDA_PE_SEED = [
-  { label: 'Current',  value: 35.24 },
-  { label: 'Jan 2026', value: 47.31 },
-  { label: 'Oct 2025', value: 57.69 },
-  { label: 'Jul 2025', value: 57.38 },
-  { label: 'Apr 2025', value: 37.05 },
-  { label: 'Jan 2025', value: 47.40 },
-  { label: 'Oct 2024', value: 62.24 },
+// Canonical completed-quarter series from the source analysis. NEVER
+// overwritten by API data — Finnhub contributes only the live "Current"
+// point (price ÷ TTM normalized EPS) via the quote fetch. Chronological.
+const NVDA_PE_CANONICAL = [
+  { label: 'Oct 2024', date: '2024-10-31', value: 62.24 },
+  { label: 'Jan 2025', date: '2025-01-31', value: 47.40 },
+  { label: 'Apr 2025', date: '2025-04-30', value: 37.05 },
+  { label: 'Jul 2025', date: '2025-07-31', value: 57.38 },
+  { label: 'Oct 2025', date: '2025-10-31', value: 57.69 },
+  { label: 'Jan 2026', date: '2026-01-31', value: 47.31 },
+  { label: 'Apr 2026', date: '2026-04-30', value: 40.70 },
 ]
 
-// Derive initial nPeMin/nPeMax from seed ±1σ so defaults are historically grounded
-function _seedStats() {
-  const vals = NVDA_PE_SEED.map(d => d.value)
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length
-  const sigma = Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length)
-  return { low: avg - sigma, high: avg + sigma }
-}
-const _ss = _seedStats()
+// Live current-quarter P/E — appended only once the quote resolves.
+// TTM normalized EPS = config baseValue (trailing full-year normalized EPS).
+const nCurrentPE = computed(() =>
+  nPriceReady.value ? +(nvdaPrice.value / TICKER_CONFIG.NVDA.baseValue).toFixed(2) : null
+)
 
-const nHistPE = ref([...NVDA_PE_SEED])  // may be replaced with Finnhub data
+// Newest-first (existing orientation; charts reverse to chronological).
+const nHistPE = computed(() => {
+  const series = nCurrentPE.value != null
+    ? [...NVDA_PE_CANONICAL, { label: 'Current', value: nCurrentPE.value }]
+    : [...NVDA_PE_CANONICAL]
+  return series.reverse()
+})
 
 // ─── BX Historical P/DE data (static quarterly base + live current point) ────
 // Finnhub supplies the live price. BX distributable earnings come from company
@@ -180,23 +186,27 @@ const EPS_VS_GAIN = [
 
 // ─── GOOGL Historical P/E seed ────────────────────────────────
 // Newest-first. Overridden at mount if Finnhub returns ≥8 quarters since 2016.
-const GOOGL_PE_SEED = [
-  { label: 'Current',  value: 20.12 },
-  { label: 'Jan 2025', value: 22.48 },
-  { label: 'Oct 2024', value: 23.55 },
-  { label: 'Jul 2024', value: 22.03 },
-  { label: 'Apr 2024', value: 25.10 },
-  { label: 'Jan 2024', value: 26.82 },
-  { label: 'Oct 2023', value: 27.05 },
+// Canonical completed-quarter series — never overwritten by API data.
+// Live "Current" point is computed from price ÷ TTM EPS (config baseValue).
+const GOOGL_PE_CANONICAL = [
+  { label: 'Oct 2023', date: '2023-10-31', value: 27.05 },
+  { label: 'Jan 2024', date: '2024-01-31', value: 26.82 },
+  { label: 'Apr 2024', date: '2024-04-30', value: 25.10 },
+  { label: 'Jul 2024', date: '2024-07-31', value: 22.03 },
+  { label: 'Oct 2024', date: '2024-10-31', value: 23.55 },
+  { label: 'Jan 2025', date: '2025-01-31', value: 22.48 },
 ]
-function _googlSeedStats() {
-  const vals = GOOGL_PE_SEED.map(d => d.value)
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length
-  const sigma = Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length)
-  return { low: avg - sigma, high: avg + sigma }
-}
-const _gs = _googlSeedStats()
-const gHistPE = ref([...GOOGL_PE_SEED])
+
+const gCurrentPE = computed(() =>
+  gPriceReady.value ? +(googlPrice.value / TICKER_CONFIG.GOOGL.baseValue).toFixed(2) : null
+)
+
+const gHistPE = computed(() => {
+  const series = gCurrentPE.value != null
+    ? [...GOOGL_PE_CANONICAL, { label: 'Current', value: gCurrentPE.value }]
+    : [...GOOGL_PE_CANONICAL]
+  return series.reverse()
+})
 
 // ─── GOOGL EPS vs Capital Gain ────────────────────────────────
 // EPS YoY from MacroTrends, capital gain from Slickcharts (calendar year).
@@ -745,6 +755,36 @@ const nHistStats = computed(() => {
   return computeHistoricalStats(values)
 })
 
+// Dynamic range caption — generated from the actual series, never hardcoded.
+const nHistCaption = computed(() => {
+  const chrono = [...nHistPE.value].reverse()
+  return `Range derived from ${chrono.length} quarters, ${chrono[0].label} to ${chrono[chrono.length - 1].label}.`
+})
+
+// ─── Forward P/E trend estimate (least-squares over the series) ─────────────
+const nPeTrend = computed(() =>
+  computeLinearTrend([...nHistPE.value].reverse().map(d => d.value))
+)
+const nTrendQ12 = computed(() => nPeTrend.value.at(12))
+
+// Consecutive quarters of multiple compression, counted from the newest point.
+const nCompressionStreak = computed(() => {
+  const vals = [...nHistPE.value].reverse().map(d => d.value)
+  let streak = 0
+  for (let i = vals.length - 1; i > 0 && vals[i] < vals[i - 1]; i--) streak++
+  return streak
+})
+
+// Tension flag: trend estimate below the ACTIVE scenario's multiple band floor.
+// Gated on price resolution — the trend includes the live current point.
+const nTrendTension = computed(() => {
+  if (!nPriceReady.value) return null
+  const band = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+  const trendVal = nTrendQ12.value
+  if (trendVal >= band.min) return null
+  return { trend: trendVal, min: band.min }
+})
+
 const nRevs        = computed(() => [nR1.value, nR2.value, nR3.value, nR4.value])
 const nRevTotal    = computed(() => nRevs.value.reduce((a, b) => a + b, 0))
 const nQEPS        = computed(() => {
@@ -1056,6 +1096,11 @@ const gHistStats = computed(() => {
   return computeHistoricalStats(values)
 })
 
+const gHistCaption = computed(() => {
+  const chrono = [...gHistPE.value].reverse()
+  return `Range derived from ${chrono.length} quarters, ${chrono[0].label} to ${chrono[chrono.length - 1].label}.`
+})
+
 const gConviction = computed(() => {
   if (!gPriceReady.value) return null
   const pe = gHistPE.value[0]?.value ?? null
@@ -1189,14 +1234,24 @@ function renderNVDAHistPEChart() {
 
   // Data in chronological order (oldest → newest = left → right)
   const ordered = [...nHistPE.value].reverse()
-  const labels  = ordered.map(d => d.label)
   const values  = ordered.map(d => d.value)
   const { avg, sigma } = nHistStats.value
   const N = values.length
 
-  const upperBand = Array(N).fill(+(avg + sigma).toFixed(2))
-  const lowerBand = Array(N).fill(+(avg - sigma).toFixed(2))
-  const avgLine   = Array(N).fill(+avg.toFixed(2))
+  // Dashed least-squares extension, four quarters past the series (only
+  // once the live point is in — the trend includes it).
+  const showTrend = nPriceReady.value
+  const EXT = showTrend ? 4 : 0
+  const total = N + EXT
+  const labels = [...ordered.map(d => d.label), ...Array.from({ length: EXT }, (_, i) => `+${i + 1}Q`)]
+  const trend = nPeTrend.value
+  const trendLine = showTrend
+    ? Array.from({ length: total }, (_, i) => (i >= N - 1 ? +trend.at(i + 1).toFixed(2) : null))
+    : []
+
+  const upperBand = Array(total).fill(+(avg + sigma).toFixed(2))
+  const lowerBand = Array(total).fill(+(avg - sigma).toFixed(2))
+  const avgLine   = Array(total).fill(+avg.toFixed(2))
   const g = gc()
   const currentPriceLabel = dlr(nvdaPrice.value)
 
@@ -1214,6 +1269,8 @@ function renderNVDAHistPEChart() {
           { data: avgLine, borderColor: '#888780', backgroundColor: 'transparent', pointRadius: 0, fill: false, borderWidth: 1.5, borderDash: [5, 4], tension: 0 },
           // 3: actual P/E
           { data: values, borderColor: '#378ADD', backgroundColor: 'transparent', pointRadius: 4, pointBackgroundColor: '#378ADD', fill: false, borderWidth: 2, tension: 0.1, spanGaps: false },
+          // 4: dashed trend extension (least-squares, 4 quarters forward)
+          { data: trendLine, borderColor: '#f59e0b', backgroundColor: 'transparent', pointRadius: 2, pointBackgroundColor: '#f59e0b', fill: false, borderWidth: 1.5, borderDash: [6, 4], tension: 0, spanGaps: false },
         ],
       },
       options: {
@@ -1223,6 +1280,7 @@ function renderNVDAHistPEChart() {
           tooltip: {
             callbacks: {
               label: c => {
+                if (c.datasetIndex === 4) return c.raw != null ? `Trend: ${c.raw}×` : null
                 if (c.datasetIndex !== 3) return null
                 return c.dataIndex === values.length - 1
                   ? `Current: ${c.raw}×`
@@ -1905,26 +1963,9 @@ async function fetchQuotes(tickers) {
   }
 }
 
-async function fetchNVDAMetrics() {
-  try {
-    const data = await $fetch('/api/finnhub/metrics?symbol=NVDA')
-    const series = extractFinnhubPESeries(data, 8, 2016)
-    if (series && series.length >= 8) {
-      // Reverse to newest-first so the ref matches NVDA_PE_SEED orientation
-      nHistPE.value = [...series].reverse()
-    }
-  } catch { /* keep seed data */ }
-}
-
-async function fetchGOOGLMetrics() {
-  try {
-    const data = await $fetch('/api/finnhub/metrics?symbol=GOOGL')
-    const series = extractFinnhubPESeries(data, 8, 2016)
-    if (series && series.length >= 8) {
-      gHistPE.value = [...series].reverse()
-    }
-  } catch { /* keep seed data */ }
-}
+// NOTE: the historical P/E series are canonical (see *_PE_CANONICAL) and are
+// never overwritten by Finnhub — the API contributes only the live price,
+// from which the current-quarter P/E point is derived.
 
 // ─── Polling (replaces WebSocket — API key stays server-only) ─
 function startPolling() {
@@ -2023,14 +2064,11 @@ onMounted(async () => {
   // Render immediately with defaults
   renderNVDACharts()
 
-  // Fetch quotes then start polling
+  // Fetch quotes then start polling. The historical P/E series are canonical;
+  // the quote alone drives the live current-quarter point.
   await fetchQuotes(allTickers.value)
   statusText.value = 'Live (30s)'
   startPolling()
-
-  // Fetch metrics in background (updates historical P/E charts if Finnhub has enough data)
-  fetchNVDAMetrics()
-  fetchGOOGLMetrics()
 })
 
 onUnmounted(() => {
@@ -2347,7 +2385,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">Normal historical range: avg P/E plus or minus one standard deviation from the last {{ nHistPE.length }} quarters (Q4 2016 onward — pre-reorientation data excluded). In plain English, it shows the zone where NVDA&apos;s P/E has usually clustered. These bounds auto-seed the min/max P/E sliders. Override freely.</div>
+          <div class="insight">Normal historical range: avg P/E plus or minus one sample standard deviation. {{ nHistCaption }} In plain English, it shows the zone where NVDA&apos;s P/E has usually clustered. Target multiples come from the scenario presets; these stats drive the chart, conviction thresholds, and the trend estimate below.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
@@ -2371,13 +2409,26 @@ watch(watchlist, () => {
             </div>
           </div>
 
+          <!-- Forward P/E trend estimate -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1" style="margin-top: 4px;">
+            <div class="tcard hero">
+              <div class="tlabel">P/E trend estimate, Qtr 12</div>
+              <div class="tprice" v-if="nPriceReady">{{ nTrendQ12.toFixed(1) }}&times;</div>
+              <div class="tprice" v-else-if="nPriceState === 'error'">—</div>
+              <div class="tprice" v-else><span class="skeleton-line" /></div>
+              <div class="tret">least-squares, 4 quarters forward</div>
+            </div>
+            <div class="insight sm:col-span-2" style="margin: 0; align-self: center;">Least-squares trend on the last {{ nHistPE.length }} quarters, extrapolated four quarters forward.<template v-if="nCompressionStreak >= 2"> The multiple has compressed in each of the last {{ nCompressionStreak === 3 ? 'three' : nCompressionStreak }} quarters.</template></div>
+          </div>
+
           <div class="chart-wrap" style="height:300px"><canvas ref="nHistPeCanvas" /></div>
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />TTM P/E</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />Avg ({{ nHistStats.avg.toFixed(1) }}&times;)</span>
             <span class="legend-item"><span class="legend-fill" />Normal range</span>
+            <span v-if="nPriceReady" class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />Trend (4Q forward)</span>
           </div>
-          <p class="note">Data from Finnhub basic-financials if &ge;8 quarters available since 2016; otherwise hardcoded 7-quarter seed. Pre-2016 data excluded — NVDA's business model changed fundamentally in FY2017.</p>
+          <p class="note">Canonical series from the source analysis ({{ NVDA_PE_CANONICAL.length }} completed quarters); the Current point is live price &divide; TTM normalized EPS. Never overwritten by API data.</p>
         </div>
 
         <!-- ── P/E Projection card ─────────────────────────────── -->
@@ -2394,6 +2445,11 @@ watch(watchlist, () => {
           <div class="targets">
             <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="nPriceReady ? colCls(nP2h - nvdaPrice) : ''">{{ dlr(nP2h) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP2h - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
             <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="nPriceReady ? colCls(nP2l - nvdaPrice) : ''">{{ dlr(nP2l) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP2l - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+          </div>
+
+          <!-- Tension flag: trend estimate vs active scenario band floor -->
+          <div v-if="nTrendTension" class="insight rev-sanity-warning">
+            The trend estimate ({{ nTrendTension.trend.toFixed(1) }}&times;) is below the active scenario's multiple band floor ({{ nTrendTension.min.toFixed(1) }}&times;). The targets above assume the compression trend does not continue.
           </div>
 
           <div class="chart-toolbar">
@@ -2782,7 +2838,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">Normal historical range: avg P/E plus or minus one standard deviation from the last {{ gHistPE.length }} quarters. In plain English, it shows the zone where GOOGL&apos;s P/E has usually clustered. Seeded with 7-quarter hardcoded data; overridden by Finnhub if &ge;8 quarters available since 2016.</div>
+          <div class="insight">Normal historical range: avg P/E plus or minus one sample standard deviation. {{ gHistCaption }} In plain English, it shows the zone where GOOGL&apos;s P/E has usually clustered. Canonical series — never overwritten by API data; the Current point is live price &divide; TTM EPS.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">

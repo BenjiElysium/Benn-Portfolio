@@ -41,23 +41,53 @@ export function getVerdict({ priceState, price, dePerShare = 5.84, buyZone = 20,
 // ─── Historical stats ─────────────────────────────────────────────────────────
 
 /**
- * Compute avg, sigma, ±1σ range, and buy-zone count from a numeric series.
+ * Compute mean, sigma, ±1σ range, and buy-zone count from a numeric series.
+ * Sigma is the SAMPLE standard deviation (n − 1 divisor) to match the
+ * source analysis — not the population form.
  * @param {number[]} values
  * @param {{ buyZoneThreshold?: number|null }} [opts]
- * @returns {{ avg:number, sigma:number, low:number, high:number, belowBuyZone:number, n:number }}
+ * @returns {{ avg:number, mean:number, sigma:number, low:number, high:number, belowBuyZone:number, n:number }}
  */
 export function computeHistoricalStats(values, opts = {}) {
   const n = values.length
-  if (n === 0) return { avg: 0, sigma: 0, low: 0, high: 0, belowBuyZone: 0, n: 0 }
+  if (n === 0) return { avg: 0, mean: 0, sigma: 0, low: 0, high: 0, belowBuyZone: 0, n: 0 }
 
   const avg = values.reduce((a, b) => a + b, 0) / n
-  const variance = values.reduce((a, b) => a + (b - avg) ** 2, 0) / n
+  const variance = n > 1
+    ? values.reduce((a, b) => a + (b - avg) ** 2, 0) / (n - 1)
+    : 0
   const sigma = Math.sqrt(variance)
 
   const threshold = opts.buyZoneThreshold ?? null
   const belowBuyZone = threshold !== null ? values.filter(v => v < threshold).length : 0
 
-  return { avg, sigma, low: avg - sigma, high: avg + sigma, belowBuyZone, n }
+  return { avg, mean: avg, sigma, low: avg - sigma, high: avg + sigma, belowBuyZone, n }
+}
+
+/**
+ * Least-squares linear trend over a chronological series, x = 1..n.
+ * Returns slope, intercept, and at(x) for extrapolation (e.g. at(12) is
+ * four quarters past an 8-quarter series).
+ * @param {number[]} values — chronological (oldest first)
+ * @returns {{ slope:number, intercept:number, n:number, at:(x:number)=>number }}
+ */
+export function computeLinearTrend(values) {
+  const n = values.length
+  if (n < 2) {
+    const flat = values[0] ?? 0
+    return { slope: 0, intercept: flat, n, at: () => flat }
+  }
+  const xMean = (n + 1) / 2
+  const yMean = values.reduce((a, b) => a + b, 0) / n
+  let sxy = 0, sxx = 0
+  for (let i = 0; i < n; i++) {
+    const dx = (i + 1) - xMean
+    sxy += dx * (values[i] - yMean)
+    sxx += dx * dx
+  }
+  const slope = sxy / sxx
+  const intercept = yMean - slope * xMean
+  return { slope, intercept, n, at: x => intercept + slope * x }
 }
 
 /**
