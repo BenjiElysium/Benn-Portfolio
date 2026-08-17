@@ -86,6 +86,27 @@ function bandLabel(metric, value, bounds, names, standardPhrase) {
 export function getVerdict(args) {
   const h = args.hysteresis ?? CONVICTION_HYSTERESIS
 
+  // Scenario-band mode — { pe, band: {min, max}, bandName, prior }: grade the
+  // multiple against an ACTIVE scenario's multipleBand (normative yardstick),
+  // not against where the multiple has historically been.
+  //   below min − hysteresis → STRONG BUY; below min → BUY;
+  //   within band → HOLD / FAIR; above max → RICH.
+  if (args.pe !== undefined && args.band) {
+    const { pe, band, bandName = 'scenario', prior } = args
+    const signals = ['STRONG BUY', 'BUY', 'HOLD / FAIR', 'RICH']
+    const bounds = [band.min - h, band.min, band.max]
+    const names = [`the strong-buy threshold`, `the ${bandName} band floor`, `the ${bandName} band ceiling`]
+    const idx = resolveWithHysteresis(pe, signals, bounds, prior, h)
+    const signal = signals[idx]
+    const standard = {
+      'STRONG BUY': `well below the ${bandName} band floor (${band.min.toFixed(1)}×)`,
+      'BUY': `below the ${bandName} band floor (${band.min.toFixed(1)}×)`,
+      'HOLD / FAIR': `within the ${bandName} band (${band.min.toFixed(1)}–${band.max.toFixed(1)}×)`,
+      'RICH': `above the ${bandName} band ceiling (${band.max.toFixed(1)}×)`,
+    }[signal]
+    return { signal, color: SIGNAL_COLORS[signal], label: bandLabel('P/E', pe, bounds, names, standard) }
+  }
+
   if (args.pe !== undefined) {
     const { pe, low, avg, high, sigma, prior } = args
     const levels = []

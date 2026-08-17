@@ -83,6 +83,9 @@ const nLastScenario = ref(TICKER_CONFIG.NVDA.defaultScenario ?? null)
 function applyNVDAScenario(scenarioKey) {
   applyScenario(nvdaState, scenarioKey, TICKER_CONFIG.NVDA)
   nLastScenario.value = scenarioKey
+  // The conviction ladder is rebuilt from the new band — a prior signal from
+  // the old band must not pin the verdict through hysteresis.
+  nConvictionPrior.value = null
 }
 
 // ─── Cost bases ───────────────────────────────────────────────
@@ -853,14 +856,39 @@ const PE_CONVICTION_CONTEXT = {
   'HOLD / FAIR': () => `Multiple within the normal historical range. Not cheap, not extended.`,
   'RICH': () => `Multiple extended beyond the historical high-end. Expect compression risk.`,
 }
+const SCENARIO_CONVICTION_CONTEXT = {
+  'STRONG BUY': label => `Well below the ${label} band floor — the market prices in less than this scenario assumes.`,
+  'BUY': label => `Below the ${label} band floor — cheaper than this scenario's multiple assumptions.`,
+  'HOLD / FAIR': label => `Consistent with the ${label} scenario's multiple assumptions.`,
+  'RICH': label => `Above the ${label} band ceiling — richer than this scenario assumes.`,
+}
 const nConvictionPrior = ref(null)
 const nConviction = computed(() => {
   if (!nPriceReady.value) return null
   const pe = nHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = nHistStats.value
-  const v = getVerdict({ pe, low, avg, high, sigma, prior: nConvictionPrior.value })
-  return { signal: v.signal, color: v.color, reason: v.label, context: PE_CONVICTION_CONTEXT[v.signal](avg) }
+  const active = nActiveScenario.value.active
+
+  // No active scenario (shouldn't happen — base applies on mount): historical basis.
+  if (!active) {
+    const v = getVerdict({ pe, low, avg, high, sigma, prior: nConvictionPrior.value })
+    return { signal: v.signal, color: v.color, reason: v.label, context: PE_CONVICTION_CONTEXT[v.signal](avg) }
+  }
+
+  // Grade against the ACTIVE scenario's multiple band (live store values, so
+  // slider edits move the yardstick with the "(modified)" state).
+  const band = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+  const scenarioLabel = TICKER_CONFIG.NVDA.scenarios[active].label
+  const v = getVerdict({ pe, band, bandName: `${scenarioLabel} scenario`, prior: nConvictionPrior.value })
+
+  // Raw historical read (no hysteresis) — surfaced when the two yardsticks disagree.
+  const hist = getVerdict({ pe, low, avg, high, sigma })
+  const divergence = hist.signal !== v.signal
+    ? `Historical band would read ${hist.signal}. The scenario band reads ${v.signal}. The historical band is drawn from ${nHistPE.value.length} quarters inside the steepest growth period in company history.`
+    : null
+
+  return { signal: v.signal, color: v.color, reason: v.label, context: SCENARIO_CONVICTION_CONTEXT[v.signal](scenarioLabel), divergence }
 })
 watch(nConviction, v => { if (v?.signal) nConvictionPrior.value = v.signal })
 
@@ -2261,6 +2289,7 @@ watch(watchlist, () => {
           <div class="conviction-body">
             <div class="conviction-reason">{{ nConviction.reason }}</div>
             <div class="conviction-context">{{ nConviction.context }}</div>
+            <div v-if="nConviction.divergence" class="conviction-divergence">{{ nConviction.divergence }}</div>
           </div>
         </div>
 
@@ -2354,7 +2383,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">Normal historical range: avg P/E plus or minus one sample standard deviation. {{ nHistCaption }} In plain English, it shows the zone where NVDA&apos;s P/E has usually clustered. Target multiples come from the scenario presets; these stats drive the chart, conviction thresholds, and the trend estimate below.</div>
+          <div class="insight">Historical range: avg P/E plus or minus one sample standard deviation. {{ nHistCaption }} Descriptive context only — where the multiple has been, not where it belongs. The conviction banner grades against the active scenario's band; these stats drive the chart band and the trend estimate below.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
@@ -2394,7 +2423,7 @@ watch(watchlist, () => {
           <div class="chart-legend">
             <span class="legend-item"><span class="legend-line" style="background:#378ADD" />TTM P/E</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#888780" />Avg ({{ nHistStats.avg.toFixed(1) }}&times;)</span>
-            <span class="legend-item"><span class="legend-fill" />Normal range</span>
+            <span class="legend-item"><span class="legend-fill" />Historical range (descriptive)</span>
             <span v-if="nPriceReady" class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />Trend (4Q forward)</span>
           </div>
           <p class="note">Canonical series from the source analysis ({{ NVDA_PE_CANONICAL.length }} completed quarters); the Current point is live price &divide; TTM normalized EPS. Never overwritten by API data.</p>
@@ -2815,7 +2844,7 @@ watch(watchlist, () => {
         <!-- ── Historical P/E card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Historical TTM P/E &mdash; context for your multiples</div>
-          <div class="insight">Normal historical range: avg P/E plus or minus one sample standard deviation. {{ gHistCaption }} In plain English, it shows the zone where GOOGL&apos;s P/E has usually clustered. Canonical series — never overwritten by API data; the Current point is live price &divide; TTM EPS.</div>
+          <div class="insight">Historical range: avg P/E plus or minus one sample standard deviation. {{ gHistCaption }} Descriptive context only — where the multiple has been, not where it belongs; GOOGL has no scenario bands yet, so conviction grades against this range. Canonical series — never overwritten by API data; the Current point is live price &divide; TTM EPS.</div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-1">
             <div class="tcard">
@@ -3262,6 +3291,13 @@ tr:hover td { background: var(--c-bg2); }
   color: #71717a;
   font-style: italic;
   font-size: 15px;
+}
+
+.conviction-divergence {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--c-amber);
+  font-style: italic;
 }
 
 /* ── Staleness note (informational, not an error) ────────────── */
