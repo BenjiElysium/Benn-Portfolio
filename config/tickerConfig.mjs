@@ -135,6 +135,12 @@ export const BX_CONFIG = {
   valuationMetric: 'DpS',  // DCF now uses Distributions per Share
   baseValue: 5.23,  // starting point (first seed overrides in staged DCF)
   baseValueLabel: 'CY2026 Distributions per Share (DpS)',
+  // Rolling LTM Distributable Earnings per common share for the live P/DE point.
+  // $6.15 as stated in Blackstone's Q2 2026 earnings release (2026-07); cross-check
+  // via roll-forward: prior LTM 5.84 (Q1 2026 release) − Q2 2025 (1.21) + Q2 2026
+  // (1.52) = 6.15. Distinct from baseValue (DpS) by design. Nothing UNVERIFIED.
+  ttmDePerShare: 6.15,
+  ttmDeLabel: 'LTM Q2 2026',
   forward: { y1: 6.03, y2: 7.56 },  // corrected DE estimates for P/DE targets
   forwardDE: { y1: 6.03, y2: 7.56 },  // explicit DE for multiple calcs (DE ≠ DpS)
   multipleBand: { min: 22, max: 29 },  // applied to DE, not DpS
@@ -225,8 +231,18 @@ export const GOOGL_CONFIG = {
   ticker: 'GOOGL',
   metric: 'EPS',
   valuationMetric: 'EPS',
-  baseValue: 10.81,
+  baseValue: 10.81,  // 2025 full-year GAAP diluted EPS — DCF seed, NOT the live P/E denominator
   baseValueLabel: '2025 actual EPS',
+  // Rolling trailing-twelve-months diluted EPS for the live P/E point, excluding
+  // unrealized equity-securities gains (SpaceX/Anthropic marks) using the
+  // per-share effects stated in Alphabet's own releases:
+  //   Q3 2025 (ended 2025-09-30): 2.87 as filed        — Q3 2025 release
+  //   Q4 2025 (ended 2025-12-31): 2.82 as filed        — Q4/FY2025 release
+  //   Q1 2026 (ended 2026-03-31): 5.11 − 2.35 = 2.76   — Q1 2026 release (gain effect stated)
+  //   Q2 2026 (ended 2026-06-30): 9.11 − 6.26 = 2.85   — Q2 2026 release (gain effect stated)
+  //   TTM = 11.30. All figures traceable to Alphabet quarterly earnings releases;
+  //   as of the Q2 2026 release (2026-07-22). Nothing UNVERIFIED.
+  ttmEps: 11.30,
   forward: { y1: 14.24, y2: 14.49 },
   multipleBand: { min: 18.0, max: 26.0 },
   projectionGrowth: 15,

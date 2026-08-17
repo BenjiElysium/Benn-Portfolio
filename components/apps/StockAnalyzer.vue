@@ -107,10 +107,11 @@ const nHistPE = computed(() => {
 // ─── BX Historical P/DE data (static quarterly base + live current point) ────
 // Finnhub supplies the live price. BX distributable earnings come from company
 // filings because Finnhub basic-financials does not expose non-GAAP DE/share.
+// Sourced from config (ttmDePerShare) — refresh there when new quarters land.
 const BX_LATEST_DE_SOURCE = {
-  label: 'LTM Q1 2026',
-  dePerShare: 5.84,
-  source: 'Blackstone Q1 2026 earnings release',
+  label: TICKER_CONFIG.BX.ttmDeLabel,
+  dePerShare: TICKER_CONFIG.BX.ttmDePerShare,
+  source: 'Blackstone Q2 2026 earnings release',
 }
 const BX_HIST_PDE = [
   { label: 'Q4 2025', value: 27.36 },
@@ -198,8 +199,10 @@ const GOOGL_PE_CANONICAL = [
   { label: 'Jan 2025', date: '2025-01-31', value: 22.48 },
 ]
 
+// Denominator is the ROLLING TTM diluted EPS ex-equity-gains (config ttmEps),
+// not the annual baseValue.
 const gCurrentPE = computed(() =>
-  gPriceReady.value ? +(googlPrice.value / TICKER_CONFIG.GOOGL.baseValue).toFixed(2) : null
+  gPriceReady.value ? +(googlPrice.value / TICKER_CONFIG.GOOGL.ttmEps).toFixed(2) : null
 )
 
 const gHistPE = computed(() => {
@@ -836,39 +839,26 @@ const nEpsGainSeries = computed(() => {
   ]
 })
 
-// NVDA conviction signal — based on current P/E vs normal historical range
-// Suppressed until the live quote resolves — never rendered off a fallback price.
+// NVDA conviction signal — current P/E vs normal historical range, resolved
+// through getVerdict (hysteresis + collision-safe label). Suppressed until
+// the live quote resolves — never rendered off a fallback price.
+const PE_CONVICTION_CONTEXT = {
+  'EXTREME BUY': avg => `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
+  'STRONG BUY': avg => `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
+  'BUY': () => `Multiple compressed below the long-run average — room to re-rate upward.`,
+  'HOLD / FAIR': () => `Multiple within the normal historical range. Not cheap, not extended.`,
+  'RICH': () => `Multiple extended beyond the historical high-end. Expect compression risk.`,
+}
+const nConvictionPrior = ref(null)
 const nConviction = computed(() => {
   if (!nPriceReady.value) return null
   const pe = nHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = nHistStats.value
-  if (pe < low - sigma) return {
-    signal: 'EXTREME BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — far below the historical avg (${avg.toFixed(1)}×)`,
-    context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
-  }
-  if (pe < low) return {
-    signal: 'STRONG BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — below the normal low end (${low.toFixed(1)}×)`,
-    context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
-  }
-  if (pe < avg) return {
-    signal: 'BUY', color: 'green',
-    reason: `P/E ${pe.toFixed(1)}× — below the historical avg (${avg.toFixed(1)}×)`,
-    context: `Multiple compressed below the long-run average — room to re-rate upward.`,
-  }
-  if (pe <= high) return {
-    signal: 'HOLD / FAIR', color: 'yellow',
-    reason: `P/E ${pe.toFixed(1)}× — within the normal range (${low.toFixed(1)}–${high.toFixed(1)}×)`,
-    context: `Multiple within the normal historical range. Not cheap, not extended.`,
-  }
-  return {
-    signal: 'RICH', color: 'red',
-    reason: `P/E ${pe.toFixed(1)}× — above the +1σ ceiling (${high.toFixed(1)}×)`,
-    context: `Multiple extended beyond the historical high-end. Expect compression risk.`,
-  }
+  const v = getVerdict({ pe, low, avg, high, sigma, prior: nConvictionPrior.value })
+  return { signal: v.signal, color: v.color, reason: v.label, context: PE_CONVICTION_CONTEXT[v.signal](avg) }
 })
+watch(nConviction, v => { if (v?.signal) nConvictionPrior.value = v.signal })
 
 // ─── BX computed ──────────────────────────────────────────────
 const bxPrice   = computed(() => prices['BX'] || TICKER_CONFIG.BX.priceFallback)
@@ -961,35 +951,25 @@ const bYr3Yield  = computed(() => (bDistYears.value[3] / bxPrice.value) * 100)
 
 // BX conviction signal — based on current P/DE vs fair-range thresholds.
 // getVerdict returns null unless the live quote has resolved; the raw
-// prices map (no fallback) is passed on purpose.
+// prices map (no fallback) is passed on purpose. Hysteresis via prior.
+const bConvictionPrior = ref(null)
 const bConviction = computed(() => {
   const v = getVerdict({
     priceState: bPriceState.value,
     price: prices['BX'],
     dePerShare: BX_LATEST_DE_SOURCE.dePerShare,
+    prior: bConvictionPrior.value,
   })
   if (!v) return null
-  const { signal, color, pde } = v
-  const detail = {
-    'STRONG BUY': {
-      reason: `P/DE ${pde}× — inside the historical buy zone (< 20×)`,
-      context: `Only ${bxHistBelowBuyZone.value} of ${bxQuarterCount} tracked quarters have reached this level. Rare entry.`,
-    },
-    'BUY': {
-      reason: `P/DE ${pde}× — below the 22× fair-range floor`,
-      context: `Approaching the lower bound of the 22–29× historical fair range.`,
-    },
-    'HOLD / FAIR': {
-      reason: `P/DE ${pde}× — within the 22–29× fair range`,
-      context: `Multiple within the historically sourced fair-value band.`,
-    },
-    'RICH': {
-      reason: `P/DE ${pde}× — above the 29× fair-range ceiling`,
-      context: `Multiple extended beyond historical fair value. Compression risk elevated.`,
-    },
-  }[signal]
-  return { signal, color, ...detail }
+  const context = {
+    'STRONG BUY': `Only ${bxHistBelowBuyZone.value} of ${bxQuarterCount} tracked quarters have reached this level. Rare entry.`,
+    'BUY': `Approaching the lower bound of the 22–29× historical fair range.`,
+    'HOLD / FAIR': `Multiple within the historically sourced fair-value band.`,
+    'RICH': `Multiple extended beyond historical fair value. Compression risk elevated.`,
+  }[v.signal]
+  return { signal: v.signal, color: v.color, reason: v.label, context }
 })
+watch(bConviction, v => { if (v?.signal) bConvictionPrior.value = v.signal })
 
 // ─── GOOGL computed ────────────────────────────────────────────
 const googlPrice  = computed(() => prices['GOOGL'] || TICKER_CONFIG.GOOGL.priceFallback)
@@ -1102,37 +1082,16 @@ const gHistCaption = computed(() => {
   return `Range derived from ${chrono.length} quarters, ${chrono[0].label} to ${chrono[chrono.length - 1].label}.`
 })
 
+const gConvictionPrior = ref(null)
 const gConviction = computed(() => {
   if (!gPriceReady.value) return null
   const pe = gHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = gHistStats.value
-  if (pe < low - sigma) return {
-    signal: 'EXTREME BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — far below the historical avg (${avg.toFixed(1)}×)`,
-    context: `Deepest discount in the dataset. Multiple compressed far below any historical norm.`,
-  }
-  if (pe < low) return {
-    signal: 'STRONG BUY', color: 'emerald',
-    reason: `P/E ${pe.toFixed(1)}× — below the normal low end (${low.toFixed(1)}×)`,
-    context: `Trading below the historical low-end multiple. Long-run avg is ${avg.toFixed(1)}×.`,
-  }
-  if (pe < avg) return {
-    signal: 'BUY', color: 'green',
-    reason: `P/E ${pe.toFixed(1)}× — below the historical avg (${avg.toFixed(1)}×)`,
-    context: `Multiple compressed below the long-run average — room to re-rate upward.`,
-  }
-  if (pe <= high) return {
-    signal: 'HOLD / FAIR', color: 'yellow',
-    reason: `P/E ${pe.toFixed(1)}× — within the normal range (${low.toFixed(1)}–${high.toFixed(1)}×)`,
-    context: `Multiple within the normal historical range. Not cheap, not extended.`,
-  }
-  return {
-    signal: 'RICH', color: 'red',
-    reason: `P/E ${pe.toFixed(1)}× — above the +1σ ceiling (${high.toFixed(1)}×)`,
-    context: `Multiple extended beyond the historical high-end. Expect compression risk.`,
-  }
+  const v = getVerdict({ pe, low, avg, high, sigma, prior: gConvictionPrior.value })
+  return { signal: v.signal, color: v.color, reason: v.label, context: PE_CONVICTION_CONTEXT[v.signal](avg) }
 })
+watch(gConviction, v => { if (v?.signal) gConvictionPrior.value = v.signal })
 
 // ─── Watchlist ────────────────────────────────────────────────
 const watchlistRows = computed(() =>

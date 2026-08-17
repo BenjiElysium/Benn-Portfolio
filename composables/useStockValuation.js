@@ -15,27 +15,118 @@
  * @property {number}              terminalMultiplier  — e.g. 10 for NVDA, 20 for BX
  */
 
-// ─── Price-gated verdict ─────────────────────────────────────────────────────
+// ─── Price-gated verdict with hysteresis ─────────────────────────────────────
+
+// Dead band around each conviction boundary, in multiple units. Once a signal
+// is set, the value must clear the boundary by this margin before it flips.
+export const CONVICTION_HYSTERESIS = 0.25
+
+const SIGNAL_COLORS = {
+  'EXTREME BUY': 'emerald',
+  'STRONG BUY': 'emerald',
+  'BUY': 'green',
+  'HOLD / FAIR': 'yellow',
+  'RICH': 'red',
+}
 
 /**
- * Compute a buy/sell/hold verdict from a live price, gated on price resolution.
- * Returns null unless priceState === 'resolved' AND price is a positive finite
- * number — a config fallback price must never produce a verdict.
- * Threshold defaults mirror the BX historical P/DE analysis
- * (buy zone < 20×, fair range 22–29×, LTM Q1 2026 DE/share $5.84).
- *
- * @param {{ priceState:'pending'|'resolved'|'error', price:number,
- *           dePerShare?:number, buyZone?:number, fairLow?:number, fairHigh?:number }} args
- * @returns {{ signal:string, color:string, pde:number }|null}
+ * Resolve a signal index on an ascending-boundary ladder with hysteresis.
+ * signals.length === bounds.length + 1; value below bounds[i] → signals[i].
+ * Moving to a STRONGER signal (lower index) requires value < bound − margin;
+ * moving WEAKER requires value > bound + margin. Without a prior, raw wins.
  */
-export function getVerdict({ priceState, price, dePerShare = 5.84, buyZone = 20, fairLow = 22, fairHigh = 29 }) {
+function resolveWithHysteresis(value, signals, bounds, prior, h) {
+  let raw = signals.length - 1
+  for (let i = 0; i < bounds.length; i++) { if (value < bounds[i]) { raw = i; break } }
+  const p = prior != null ? signals.indexOf(prior) : -1
+  if (p < 0 || raw === p) return p < 0 ? raw : p
+  if (raw < p) {
+    let s = signals.length - 1
+    for (let i = 0; i < bounds.length; i++) { if (value < bounds[i] - h) { s = i; break } }
+    return s < p ? s : p
+  }
+  let w = 0
+  for (let i = bounds.length - 1; i >= 0; i--) { if (value > bounds[i] + h) { w = i + 1; break } }
+  return w > p ? w : p
+}
+
+/**
+ * Boundary-collision-safe label. When the value sits within 0.1 of the nearest
+ * boundary, rounded values collide and comparative phrasing contradicts itself
+ * ("39.0× below 39.0×") — render "at {boundary}" with two decimals instead.
+ */
+function bandLabel(metric, value, bounds, names, standardPhrase) {
+  let nearest = -1, gap = Infinity
+  for (let i = 0; i < bounds.length; i++) {
+    const d = Math.abs(value - bounds[i])
+    if (Number.isFinite(bounds[i]) && d < gap) { gap = d; nearest = i }
+  }
+  if (nearest >= 0 && gap < 0.1) {
+    return `${metric} ${value.toFixed(2)}× — at ${names[nearest]} (${bounds[nearest].toFixed(2)}×)`
+  }
+  return `${metric} ${value.toFixed(1)}× — ${standardPhrase}`
+}
+
+/**
+ * Compute a buy/sell/hold verdict. Two modes:
+ *
+ * P/E band mode — `{ pe, low, avg?, high?, sigma?, prior?, hysteresis? }`:
+ * conviction ladder from historical stats (EXTREME BUY < low−σ < STRONG BUY
+ * < low < BUY < avg < HOLD / FAIR < high < RICH), with hysteresis against
+ * `prior` and a collision-safe label.
+ *
+ * P/DE mode (price-gated) — `{ priceState, price, dePerShare?, buyZone?,
+ * fairLow?, fairHigh?, prior? }`: returns null unless priceState ===
+ * 'resolved' AND price is a positive finite number — a config fallback price
+ * must never produce a verdict. Threshold defaults mirror the BX historical
+ * P/DE analysis (buy zone < 20×, fair range 22–29×).
+ *
+ * @returns {{ signal:string, color:string, label:string, pde?:number }|null}
+ */
+export function getVerdict(args) {
+  const h = args.hysteresis ?? CONVICTION_HYSTERESIS
+
+  if (args.pe !== undefined) {
+    const { pe, low, avg, high, sigma, prior } = args
+    const levels = []
+    if (low != null && sigma != null) levels.push({ sig: 'EXTREME BUY', upper: low - sigma, name: 'the extreme-buy threshold' })
+    if (low != null) levels.push({ sig: 'STRONG BUY', upper: low, name: 'the low end of the normal range' })
+    if (avg != null) levels.push({ sig: 'BUY', upper: avg, name: 'the historical avg' })
+    if (high != null) levels.push({ sig: 'HOLD / FAIR', upper: high, name: 'the high end of the normal range' })
+    const ORDER = ['EXTREME BUY', 'STRONG BUY', 'BUY', 'HOLD / FAIR', 'RICH']
+    const terminal = levels.length ? ORDER[ORDER.indexOf(levels[levels.length - 1].sig) + 1] : 'HOLD / FAIR'
+    const signals = [...levels.map(l => l.sig), terminal]
+    const bounds = levels.map(l => l.upper)
+    const names = levels.map(l => l.name)
+
+    const idx = resolveWithHysteresis(pe, signals, bounds, prior, h)
+    const signal = signals[idx]
+    const standard = {
+      'EXTREME BUY': avg != null ? `far below the historical avg (${avg.toFixed(1)}×)` : `below the extreme-buy threshold (${(low - sigma).toFixed(1)}×)`,
+      'STRONG BUY': `below the normal low end (${low?.toFixed(1)}×)`,
+      'BUY': avg != null ? `below the historical avg (${avg.toFixed(1)}×)` : `above the normal low end (${low?.toFixed(1)}×)`,
+      'HOLD / FAIR': `within the normal range (${low?.toFixed(1)}–${high?.toFixed(1)}×)`,
+      'RICH': `above the +1σ ceiling (${high?.toFixed(1)}×)`,
+    }[signal]
+    return { signal, color: SIGNAL_COLORS[signal], label: bandLabel('P/E', pe, bounds, names, standard) }
+  }
+
+  const { priceState, price, dePerShare = 5.84, buyZone = 20, fairLow = 22, fairHigh = 29, prior } = args
   if (priceState !== 'resolved') return null
   if (!Number.isFinite(price) || price <= 0) return null
   const pde = +(price / dePerShare).toFixed(2)
-  if (pde < buyZone)  return { signal: 'STRONG BUY', color: 'emerald', pde }
-  if (pde < fairLow)  return { signal: 'BUY', color: 'green', pde }
-  if (pde <= fairHigh) return { signal: 'HOLD / FAIR', color: 'yellow', pde }
-  return { signal: 'RICH', color: 'red', pde }
+  const signals = ['STRONG BUY', 'BUY', 'HOLD / FAIR', 'RICH']
+  const bounds = [buyZone, fairLow, fairHigh]
+  const names = ['the buy-zone threshold', 'the fair-range floor', 'the fair-range ceiling']
+  const idx = resolveWithHysteresis(pde, signals, bounds, prior, h)
+  const signal = signals[idx]
+  const standard = {
+    'STRONG BUY': `inside the historical buy zone (< ${buyZone}×)`,
+    'BUY': `below the ${fairLow}× fair-range floor`,
+    'HOLD / FAIR': `within the ${fairLow}–${fairHigh}× fair range`,
+    'RICH': `above the ${fairHigh}× fair-range ceiling`,
+  }[signal]
+  return { signal, color: SIGNAL_COLORS[signal], label: bandLabel('P/DE', pde, bounds, names, standard), pde }
 }
 
 // ─── Historical stats ─────────────────────────────────────────────────────────
