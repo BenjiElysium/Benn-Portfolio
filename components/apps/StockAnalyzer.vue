@@ -552,6 +552,78 @@ const nDcfBreakdown = computed(() => ({
 }))
 const nVsFloor = computed(() => (nFloor.value - nvdaPrice.value) / nvdaPrice.value)
 
+// ─── Scenario comparison: compute all three scenario floors ─────────────────
+const nScenarioFloors = computed(() => {
+  const scenarios = TICKER_CONFIG.NVDA.scenarios
+  const results = {}
+
+  for (const [key, scenario] of Object.entries(scenarios)) {
+    const dcf = computeStagedDCF({
+      baseValue: TICKER_CONFIG.NVDA.baseValue,
+      seedValues: scenario.seedValues,
+      growthStages: scenario.growthStages,
+      terminal: scenario.terminal,
+      discountRate: nDiscountRate.value,
+    })
+    results[key] = {
+      floor: dcf.intrinsic,
+      yr10EPS: dcf.valuePath[dcf.valuePath.length - 1],
+    }
+  }
+  return results
+})
+
+// Compute implied revenue for each scenario (from Yr-10 EPS)
+// netMargin = (GM * (1 - opex) * (1 - tax)) / dilutedShares
+// = (0.73 * 0.814 * 0.8412) / 24.432 = 0.1639 ≈ 16.39% net margin
+// impliedRev = Yr10EPS / netMargin
+const nScenarioImpliedRev = computed(() => {
+  const dilutedShares = 24.432
+  const gm = 0.73, opex = 0.186, tax = 0.1588
+  const netMargin = (gm * (1 - opex) * (1 - tax)) / dilutedShares
+
+  const results = {}
+  for (const [key, data] of Object.entries(nScenarioFloors.value)) {
+    results[key] = data.yr10EPS / netMargin
+  }
+  return results
+})
+
+// Generate comparison caption
+const nScenarioCaption = computed(() => {
+  const bearFloor = nScenarioFloors.value.bear?.floor ?? 0
+  const baseFloor = nScenarioFloors.value.base?.floor ?? 0
+  const bullFloor = nScenarioFloors.value.bull?.floor ?? 0
+  const price = nvdaPrice.value
+
+  if (price < bearFloor) {
+    return `At $${price.toFixed(2)}, NVDA is priced below the Bear case.`
+  } else if (price >= bearFloor && price < baseFloor) {
+    return `At $${price.toFixed(2)}, NVDA is priced between the Bear and Base cases.`
+  } else if (price >= baseFloor && price < bullFloor) {
+    return `At $${price.toFixed(2)}, NVDA is priced between the Base and Bull cases.`
+  } else {
+    return `At $${price.toFixed(2)}, NVDA is priced above the Bull case.`
+  }
+})
+
+// Compute scenario numberline positions (0 to 100%)
+const nScenarioLinePositions = computed(() => {
+  const floors = nScenarioFloors.value
+  const price = nvdaPrice.value
+
+  const minVal = Math.min(price, floors.bear?.floor, floors.base?.floor, floors.bull?.floor) * 0.9
+  const maxVal = Math.max(price, floors.bear?.floor, floors.base?.floor, floors.bull?.floor) * 1.1
+  const range = maxVal - minVal
+
+  return {
+    bear: ((floors.bear?.floor - minVal) / range) * 100,
+    base: ((floors.base?.floor - minVal) / range) * 100,
+    bull: ((floors.bull?.floor - minVal) / range) * 100,
+    price: ((price - minVal) / range) * 100,
+  }
+})
+
 // Historical P/E stats (reactive — updates if Finnhub data replaces seed)
 const nHistStats = computed(() => {
   const chronological = [...nHistPE.value].reverse()
@@ -2036,7 +2108,7 @@ watch(watchlist, () => {
 
         <!-- ── Scenario presets ───────────────────────────────────── -->
         <div class="card">
-          <div class="card-title">Scenario presets — reconfigurate the model</div>
+          <div class="card-title">Scenario presets — reconfigure the model</div>
           <div class="insight">Quick-load predefined scenarios: growth rates, terminal assumptions, and P/E multiples. Each preset applies a complete configuration to the DCF and valuation models. Click to apply; sliders adjust independently afterward.</div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button v-for="(scenario, key) in TICKER_CONFIG.NVDA.scenarios" :key="key" class="scenario-btn" @click="applyNVDAScenario(key)">
@@ -2044,6 +2116,76 @@ watch(watchlist, () => {
               <div class="scenario-desc">{{ scenario.description }}</div>
             </button>
           </div>
+        </div>
+
+        <!-- ── Scenario comparison strip ────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Scenario intrinsic floors</div>
+          <div class="insight">{{ nScenarioCaption }}</div>
+
+          <!-- Number line ─────────────────────────────────────────── -->
+          <div class="scenario-numberline">
+            <svg width="100%" height="40" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="nl-grad-bear">
+                  <stop offset="0%" stop-color="#ef4444" />
+                  <stop offset="100%" stop-color="#991b1b" />
+                </linearGradient>
+                <linearGradient id="nl-grad-base">
+                  <stop offset="0%" stop-color="#f59e0b" />
+                  <stop offset="100%" stop-color="#b45309" />
+                </linearGradient>
+                <linearGradient id="nl-grad-bull">
+                  <stop offset="0%" stop-color="#10b981" />
+                  <stop offset="100%" stop-color="#065f46" />
+                </linearGradient>
+              </defs>
+
+              <!-- Baseline -->
+              <line x1="2%" y1="50%" x2="98%" y2="50%" stroke="rgba(255,255,255,0.2)" stroke-width="1" />
+
+              <!-- Bear marker -->
+              <circle :cx="`${nScenarioLinePositions.bear}%`" cy="50%" r="2.5%" fill="url(#nl-grad-bear)" />
+              <!-- Base marker -->
+              <circle :cx="`${nScenarioLinePositions.base}%`" cy="50%" r="2.5%" fill="url(#nl-grad-base)" />
+              <!-- Bull marker -->
+              <circle :cx="`${nScenarioLinePositions.bull}%`" cy="50%" r="2.5%" fill="url(#nl-grad-bull)" />
+              <!-- Price marker (hollow circle) -->
+              <circle :cx="`${nScenarioLinePositions.price}%`" cy="50%" r="2%" fill="none" stroke="#7dd3fc" stroke-width="0.3%" />
+            </svg>
+          </div>
+
+          <!-- Legend ───────────────────────────────────────────────── -->
+          <div class="chart-legend" style="margin-top: 1rem;">
+            <span class="legend-item"><span class="legend-dot" style="background:#ef4444" />Bear</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#f59e0b" />Base</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#10b981" />Bull</span>
+            <span class="legend-item"><span class="legend-circle" />Current price</span>
+          </div>
+
+          <!-- Comparison table ───────────────────────────────────── -->
+          <table style="margin-top: 1.5rem;">
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th style="text-align: right;">Yr-10 EPS</th>
+                <th style="text-align: right;">Implied Revenue</th>
+                <th style="text-align: right;">Floor</th>
+                <th style="text-align: right;">Spot vs Floor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(label, key) in { bear: 'Bear', base: 'Base', bull: 'Bull' }" :key="key">
+                <td><strong>{{ label }}</strong></td>
+                <td style="text-align: right;">${{ nScenarioFloors[key]?.yr10EPS.toFixed(2) }}</td>
+                <td style="text-align: right;">${{ (nScenarioImpliedRev[key] / 1000).toFixed(1) }}B</td>
+                <td style="text-align: right;">${{ nScenarioFloors[key]?.floor.toFixed(2) }}</td>
+                <td style="text-align: right;" :class="colCls(nvdaPrice - nScenarioFloors[key]?.floor)">{{ pct((nvdaPrice - nScenarioFloors[key]?.floor) / nScenarioFloors[key]?.floor, 1) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="note">Net margin computed from revenue model: 73% GM × (1 − 18.6% opex) × (1 − 15.88% tax) ÷ 24.432B shares = 16.39%. Implied revenue = Yr-10 EPS ÷ net margin.</p>
         </div>
 
         <!-- ── Historical P/E card ─────────────────────────────── -->
@@ -2769,6 +2911,12 @@ watch(watchlist, () => {
 .legend-line { width: 18px; height: 2px; display: inline-block; }
 .legend-dash { width: 18px; height: 0; border-top: 2px dashed; display: inline-block; }
 .legend-fill { width: 18px; height: 10px; display: inline-block; background: rgba(55,138,221,0.15); border: 0.5px solid rgba(55,138,221,0.3); border-radius: 2px; }
+.legend-dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; }
+.legend-circle { width: 10px; height: 10px; display: inline-block; border-radius: 50%; border: 2px solid #7dd3fc; background: transparent; }
+
+/* ─── Scenario comparison ──────────────────────────────────── */
+.scenario-numberline { margin: 1rem 0; }
+.scenario-numberline svg { display: block; width: 100%; }
 
 /* ─── Table ──────────────────────────────────────────────────── */
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }

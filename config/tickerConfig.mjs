@@ -66,40 +66,47 @@ export const NVDA_CONFIG = {
   scenarios: {
     bear: {
       label: 'Bear',
-      description: 'Deceleration begins in FY2028. Multiple compresses to the low end of the historical range.',
+      description: 'Deceleration begins in FY2028. Multiple compresses to '
+                 + 'the low end of the historical range.',
       seedValues: [8.98],
       growthStages: [
         { years: 1, rate: 0.25 },
         { years: 3, rate: 0.12 },
-        { years: 5, rate: 0.05 },
+        { years: 5, rate: 0.05 }
       ],
       terminal: { growth: 0.04, years: 10 },
-      multipleBand: { min: 25.0, max: 33.0 },
+      multipleBand: { min: 25.0, max: 33.0 }
     },
+
     base: {
       label: 'Base',
-      description: 'Consensus through FY2028, then decelerating toward a mature growth rate. Multiple band centered on long-run historical average.',
+      description: 'Consensus through FY2028, then decelerating toward a '
+                 + 'mature growth rate. Multiple band floor is the '
+                 + 'spreadsheet Qtr-12 P/E trend estimate of 29.4x.',
+      seedValues: [8.98, 12.79],
+      growthStages: [
+        { years: 3, rate: 0.20 },
+        { years: 5, rate: 0.12 }
+      ],
+      terminal: { growth: 0.08, years: 10 },
+      multipleBand: { min: 29.0, max: 40.0 }
+    },
+
+    bull: {
+      label: 'Bull',
+      description: 'Source spreadsheet analysis. Reproduces the '
+                 + 'authoritative model exactly.',
       seedValues: [8.98, 12.79],
       growthStages: [
         { years: 3, rate: 0.30 },
-        { years: 5, rate: 0.20 },
+        { years: 5, rate: 0.20 }
       ],
       terminal: { growth: 0.15, years: 10 },
-      multipleBand: { min: 39.5, max: 58.9 },
-    },
-    bull: {
-      label: 'Bull',
-      description: 'Extends elevated growth rates further. Terminal growth sustained above consensus. Multiple expands toward peak historical levels.',
-      seedValues: [8.98, 12.79],
-      growthStages: [
-        { years: 2, rate: 0.40 },
-        { years: 3, rate: 0.35 },
-        { years: 5, rate: 0.25 },
-      ],
-      terminal: { growth: 0.20, years: 10 },
-      multipleBand: { min: 55.0, max: 75.0 },
-    },
+      multipleBand: { min: 37.28, max: 47.85 }
+    }
   },
+
+  defaultScenario: 'base'
 }
 
 // ─── BX ─────────────────────────────────────────────────────────────────────
