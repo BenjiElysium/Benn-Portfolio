@@ -624,6 +624,65 @@ const nScenarioLinePositions = computed(() => {
   }
 })
 
+// Track active scenario and dirty state
+const nActiveScenario = computed(() => {
+  const scenarios = TICKER_CONFIG.NVDA.scenarios
+  for (const [key, scenario] of Object.entries(scenarios)) {
+    const stateSeeds = nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues
+    const stateStages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
+    const stateTerminal = nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal
+    const stateMultiple = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+
+    // Deep compare: seeds, stages, terminal, multiple
+    const seedsMatch = JSON.stringify(stateSeeds) === JSON.stringify(scenario.seedValues)
+    const stagesMatch = JSON.stringify(stateStages) === JSON.stringify(scenario.growthStages)
+    const terminalMatch = JSON.stringify(stateTerminal) === JSON.stringify(scenario.terminal)
+    const multipleMatch = JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand)
+
+    if (seedsMatch && stagesMatch && terminalMatch && multipleMatch) {
+      return { active: key, isDirty: false }
+    }
+  }
+  // If no exact match, check which scenario was likely the starting point (use base as default)
+  return { active: null, isDirty: false }
+})
+
+// Dirty state: active scenario with modifications appended to label
+const nScenarioButtonLabel = computed(() => {
+  const as = nActiveScenario.value
+  if (!as.active) return null
+  const scenario = TICKER_CONFIG.NVDA.scenarios[as.active]
+  const stateSeeds = nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues
+  const stateStages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
+  const stateTerminal = nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal
+  const stateMultiple = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+
+  const isDirty = !(
+    JSON.stringify(stateSeeds) === JSON.stringify(scenario.seedValues) &&
+    JSON.stringify(stateStages) === JSON.stringify(scenario.growthStages) &&
+    JSON.stringify(stateTerminal) === JSON.stringify(scenario.terminal) &&
+    JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand)
+  )
+
+  return isDirty ? `${scenario.label} (modified)` : scenario.label
+})
+
+// Implied revenue with sanity check for staged DCF current config
+const REVENUE_SANITY_CEILING = 1.5e12  // ~1.5T
+const nDcfImpliedRev = computed(() => {
+  const dilutedShares = 24.432
+  const gm = 0.73, opex = 0.186, tax = 0.1588
+
+  const yr10EPS = nDcfFull.value.yr10EPS
+  // impliedRev = (yr10EPS × dilutedShares) / (GM × (1 - opex) × (1 - tax))
+  const impliedRev = yr10EPS * dilutedShares / gm / (1 - opex) / (1 - tax)
+
+  return {
+    value: impliedRev,
+    flagged: impliedRev > REVENUE_SANITY_CEILING,
+  }
+})
+
 // Historical P/E stats (reactive — updates if Finnhub data replaces seed)
 const nHistStats = computed(() => {
   const chronological = [...nHistPE.value].reverse()
@@ -2109,9 +2168,14 @@ watch(watchlist, () => {
         <!-- ── Scenario presets ───────────────────────────────────── -->
         <div class="card">
           <div class="card-title">Scenario presets — reconfigure the model</div>
-          <div class="insight">Quick-load predefined scenarios: growth rates, terminal assumptions, and P/E multiples. Each preset applies a complete configuration to the DCF and valuation models. Click to apply; sliders adjust independently afterward.</div>
+          <div class="insight">Quick-load predefined scenarios: growth rates, terminal assumptions, and P/E multiples. Each preset applies a complete configuration to the DCF and valuation models. Click to apply; sliders adjust independently afterward.
+            <span v-if="nActiveScenario.active" class="ml-2 text-zinc-400">
+              Active: <strong>{{ nScenarioButtonLabel }}</strong>
+              <button type="button" @click="applyNVDAScenario(nActiveScenario.active)" class="ml-1 text-blue-400 hover:text-blue-300 underline text-[12px]" v-if="nScenarioButtonLabel?.includes('modified')">reset</button>
+            </span>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button v-for="(scenario, key) in TICKER_CONFIG.NVDA.scenarios" :key="key" class="scenario-btn" @click="applyNVDAScenario(key)">
+            <button v-for="(scenario, key) in TICKER_CONFIG.NVDA.scenarios" :key="key" class="scenario-btn" :class="{ active: nActiveScenario.active === key }" @click="applyNVDAScenario(key)">
               <div class="scenario-label">{{ scenario.label }}</div>
               <div class="scenario-desc">{{ scenario.description }}</div>
             </button>
@@ -2259,6 +2323,12 @@ watch(watchlist, () => {
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
           <div class="insight">This is a present-value estimate, not a price target. It grows consensus EPS for 2 years, then applies staged growth rates for 8 years, discounts those future dollars back at {{ nD }}%, and derives terminal value using the Rx formula.</div>
           <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
+          <div class="insight" :class="nDcfImpliedRev.flagged ? 'rev-sanity-warning' : ''">
+            <strong>Yr-10 implied revenue:</strong> {{ dlr(nDcfImpliedRev.value / 1000) }}T
+            <span v-if="nDcfImpliedRev.flagged" class="rev-sanity-flag" title="This growth path implies annual revenue larger than the entire current global semiconductor industry. Confirm this is intended.">
+              ⚠️ Exceeds sanity ceiling ($1.5T)
+            </span>
+          </div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -2995,6 +3065,11 @@ tr:hover td { background: var(--c-bg2); }
   background: var(--c-bg);
   border-color: var(--c-border);
 }
+.scenario-btn.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgb(59, 130, 246);
+  box-shadow: inset 0 0 0 0.5px rgb(59, 130, 246);
+}
 .scenario-label {
   font-size: 14px;
   font-weight: 500;
@@ -3004,5 +3079,19 @@ tr:hover td { background: var(--c-bg2); }
   font-size: 11px;
   color: var(--c-text2);
   line-height: 1.4;
+}
+
+/* ─── Revenue sanity check ───────────────────────────────────────── */
+.rev-sanity-warning {
+  border-left: 2px solid var(--c-amber);
+  padding-left: 12px;
+  background: rgba(217, 119, 6, 0.05);
+}
+.rev-sanity-flag {
+  color: var(--c-amber);
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 6px;
+  cursor: help;
 }
 </style>
