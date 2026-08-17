@@ -46,8 +46,10 @@ function checkBreakpoint() {
 function toggleSidebar() { sidebarOpen.value = !sidebarOpen.value }
 
 // ─── Scenario preset handler ───────────────────────────────────
+const nLastScenario = ref(TICKER_CONFIG.NVDA.defaultScenario ?? null)
 function applyNVDAScenario(scenarioKey) {
   applyScenario(nvdaState, scenarioKey, TICKER_CONFIG.NVDA)
+  nLastScenario.value = scenarioKey
 }
 
 // ─── Cost bases ───────────────────────────────────────────────
@@ -239,16 +241,34 @@ const nG = computed({
   set: (v) => { nvdaState.projectionGrowth = v }
 })
 const nG5 = computed({
-  get: () => nvdaState.dcfDefaults?.g5 ?? TICKER_CONFIG.NVDA.dcfDefaults.g5,
-  set: (v) => { nvdaState.dcfDefaults.g5 = v }
+  get: () => {
+    const stages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
+    return (stages?.[0]?.rate ?? 0) * 100
+  },
+  set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const nH5 = computed({
-  get: () => nvdaState.dcfDefaults?.h5 ?? TICKER_CONFIG.NVDA.dcfDefaults.h5,
-  set: (v) => { nvdaState.dcfDefaults.h5 = v }
+  get: () => {
+    const stages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
+    return (stages?.[stages.length - 1]?.rate ?? 0) * 100
+  },
+  set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const nD = computed({
   get: () => (nDiscountRate.value * 100).toFixed(2),
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
+})
+const nCapmRf = computed({
+  get: () => (nvdaState.capm?.rf ?? TICKER_CONFIG.NVDA.capm.rf) * 100,
+  set: (v) => { nvdaState.capm.rf = v / 100 }
+})
+const nCapmErp = computed({
+  get: () => (nvdaState.capm?.erp ?? TICKER_CONFIG.NVDA.capm.erp) * 100,
+  set: (v) => { nvdaState.capm.erp = v / 100 }
+})
+const nCapmBeta = computed({
+  get: () => nvdaState.capm?.beta ?? TICKER_CONFIG.NVDA.capm.beta,
+  set: (v) => { nvdaState.capm.beta = v }
 })
 const nBaseEPS = computed({
   get: () => nvdaState.baseValue ?? TICKER_CONFIG.NVDA.baseValue,
@@ -293,12 +313,24 @@ const bPMax = computed({
   set: (v) => { bxState.multipleBand.max = v }
 })
 const bG = computed({
-  get: () => bxState.dcfDefaults?.g ?? TICKER_CONFIG.BX.dcfDefaults.g,
-  set: (v) => { bxState.dcfDefaults.g = v }
+  get: () => bxState.projectionGrowth ?? TICKER_CONFIG.BX.projectionGrowth,
+  set: (v) => { bxState.projectionGrowth = v }
 })
 const bD = computed({
   get: () => (bDiscountRate.value * 100).toFixed(2),
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
+})
+const bCapmRf = computed({
+  get: () => (bxState.capm?.rf ?? TICKER_CONFIG.BX.capm.rf) * 100,
+  set: (v) => { bxState.capm.rf = v / 100 }
+})
+const bCapmErp = computed({
+  get: () => (bxState.capm?.erp ?? TICKER_CONFIG.BX.capm.erp) * 100,
+  set: (v) => { bxState.capm.erp = v / 100 }
+})
+const bCapmBeta = computed({
+  get: () => bxState.capm?.beta ?? TICKER_CONFIG.BX.capm.beta,
+  set: (v) => { bxState.capm.beta = v }
 })
 
 // GOOGL computed refs
@@ -323,12 +355,18 @@ const gG = computed({
   set: (v) => { googlState.projectionGrowth = v }
 })
 const gG5 = computed({
-  get: () => googlState.dcfDefaults?.g5 ?? TICKER_CONFIG.GOOGL.dcfDefaults.g5,
-  set: (v) => { googlState.dcfDefaults.g5 = v }
+  get: () => {
+    const stages = googlState.growthStages ?? TICKER_CONFIG.GOOGL.growthStages
+    return (stages?.[0]?.rate ?? 0) * 100
+  },
+  set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const gH5 = computed({
-  get: () => googlState.dcfDefaults?.h5 ?? TICKER_CONFIG.GOOGL.dcfDefaults.h5,
-  set: (v) => { googlState.dcfDefaults.h5 = v }
+  get: () => {
+    const stages = googlState.growthStages ?? TICKER_CONFIG.GOOGL.growthStages
+    return (stages?.[stages.length - 1]?.rate ?? 0) * 100
+  },
+  set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const gD = computed({
   get: () => (TICKER_CONFIG.GOOGL.discountRateOverride * 100).toFixed(2),
@@ -411,6 +449,7 @@ const formatters = {
   multiple: v => fmtX(v),
   percent: v => v.toFixed(1) + '%',
   billion: v => '$' + v.toFixed(1) + 'B',
+  decimal: v => v.toFixed(2),
 }
 
 // ─── Dynamic slider generation from config ─────────────────────
@@ -422,6 +461,7 @@ const nvdaSliders = buildSliderSections('NVDA', TICKER_CONFIG.NVDA.sliderConfig,
   projGrowth: nG,
   baseValue: nBaseEPS,
   dcfG5: nG5, dcfH5: nH5, discountRate: nD,
+  capmRf: nCapmRf, capmErp: nCapmErp, capmBeta: nCapmBeta,
   revQ1: nR1, revQ2: nR2, revQ3: nR3, revQ4: nR4,
 }, formatters)
 
@@ -432,6 +472,7 @@ const bxSliders = buildSliderSections('BX', TICKER_CONFIG.BX.sliderConfig, {
   minMultiple: bPMin, maxMultiple: bPMax,
   projGrowth: bG,
   discountRate: bD,
+  capmRf: bCapmRf, capmErp: bCapmErp, capmBeta: bCapmBeta,
 }, formatters)
 
 // GOOGL: map config keys to computed refs
@@ -521,18 +562,18 @@ const n2RangeSub = computed(() => `${pct((nP2l.value - nvdaPrice.value) / nvdaPr
 
 // NVDA Staged DCF with CAPM-derived discount rate
 const nDiscountRate = computed(() => {
-  const cfg = TICKER_CONFIG.NVDA
-  if (cfg.capm) {
-    return cfg.capm.rf + cfg.capm.beta * cfg.capm.erp
+  const capm = nvdaState.capm ?? TICKER_CONFIG.NVDA.capm
+  if (capm) {
+    return capm.rf + capm.beta * capm.erp
   }
-  return cfg.discountRateOverride / 100  // fallback (not used for NVDA)
+  return TICKER_CONFIG.NVDA.discountRateOverride / 100  // fallback (not used for NVDA)
 })
 
 const nDcfFull = computed(() => computeStagedDCF({
-  baseValue: TICKER_CONFIG.NVDA.baseValue,
-  seedValues: TICKER_CONFIG.NVDA.seedValues,
-  growthStages: TICKER_CONFIG.NVDA.growthStages,
-  terminal: TICKER_CONFIG.NVDA.terminal,
+  baseValue: nvdaState.baseValue ?? TICKER_CONFIG.NVDA.baseValue,
+  seedValues: nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues,
+  growthStages: nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages,
+  terminal: nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal,
   discountRate: nDiscountRate.value,
 }))
 
@@ -541,15 +582,22 @@ const nTerminalDiverges = computed(() => nDcfFull.value.terminalDiverges)
 const nTerminalPercent = computed(() => nDcfFull.value.terminalAsPercentOfIntrinsic)
 
 // Keep old breakdown for backward compatibility (will be replaced by nDcfFull)
-const nDcfBreakdown = computed(() => ({
-  valuePath: nDcfFull.value.valuePath,
-  pvPath: nDcfFull.value.pvPath,
-  intrinsic: nDcfFull.value.intrinsic,
-  Rx: nDcfFull.value.Rx,
-  mult: nDcfFull.value.mult,
-  terminalNumerator: nDcfFull.value.terminalNumerator,
-  pvTerminal: nDcfFull.value.pvTerminal,
-}))
+const nDcfBreakdown = computed(() => {
+  const full = nDcfFull.value
+  return {
+    valuePath: full.valuePath,
+    pvPath: full.pvPath,
+    intrinsic: full.intrinsic,
+    Rx: full.Rx,
+    mult: full.mult,
+    terminalNumerator: full.terminalNumerator,
+    pvTerminal: full.pvTerminal,
+    pvEarnings: full.intrinsic - full.pvTerminal,
+    floor: full.intrinsic,
+    yr5EPS: full.valuePath[4] ?? 0,
+    yr10EPS: full.valuePath[full.valuePath.length - 1] ?? 0,
+  }
+})
 const nVsFloor = computed(() => (nFloor.value - nvdaPrice.value) / nvdaPrice.value)
 
 // ─── Scenario comparison: compute all three scenario floors ─────────────────
@@ -624,34 +672,14 @@ const nScenarioLinePositions = computed(() => {
   }
 })
 
-// Track active scenario and dirty state
+// Track active scenario and dirty state (derived from store vs scenario config,
+// anchored on the last-applied scenario — not on edit events)
 const nActiveScenario = computed(() => {
-  const scenarios = TICKER_CONFIG.NVDA.scenarios
-  for (const [key, scenario] of Object.entries(scenarios)) {
-    const stateSeeds = nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues
-    const stateStages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
-    const stateTerminal = nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal
-    const stateMultiple = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+  const active = nLastScenario.value
+  if (!active) return { active: null, isDirty: false }
+  const scenario = TICKER_CONFIG.NVDA.scenarios?.[active]
+  if (!scenario) return { active: null, isDirty: false }
 
-    // Deep compare: seeds, stages, terminal, multiple
-    const seedsMatch = JSON.stringify(stateSeeds) === JSON.stringify(scenario.seedValues)
-    const stagesMatch = JSON.stringify(stateStages) === JSON.stringify(scenario.growthStages)
-    const terminalMatch = JSON.stringify(stateTerminal) === JSON.stringify(scenario.terminal)
-    const multipleMatch = JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand)
-
-    if (seedsMatch && stagesMatch && terminalMatch && multipleMatch) {
-      return { active: key, isDirty: false }
-    }
-  }
-  // If no exact match, check which scenario was likely the starting point (use base as default)
-  return { active: null, isDirty: false }
-})
-
-// Dirty state: active scenario with modifications appended to label
-const nScenarioButtonLabel = computed(() => {
-  const as = nActiveScenario.value
-  if (!as.active) return null
-  const scenario = TICKER_CONFIG.NVDA.scenarios[as.active]
   const stateSeeds = nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues
   const stateStages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
   const stateTerminal = nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal
@@ -664,17 +692,25 @@ const nScenarioButtonLabel = computed(() => {
     JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand)
   )
 
-  return isDirty ? `${scenario.label} (modified)` : scenario.label
+  return { active, isDirty }
+})
+
+const nScenarioButtonLabel = computed(() => {
+  const as = nActiveScenario.value
+  if (!as.active) return null
+  const label = TICKER_CONFIG.NVDA.scenarios[as.active].label
+  return as.isDirty ? `${label} (modified)` : label
 })
 
 // Implied revenue with sanity check for staged DCF current config
-const REVENUE_SANITY_CEILING = 1.5e12  // ~1.5T
+const REVENUE_SANITY_CEILING = 1.5e12  // ~2x current global semiconductor industry revenue (~$750B)
 const nDcfImpliedRev = computed(() => {
-  const dilutedShares = 24.432
+  const dilutedShares = 24.432e9
   const gm = 0.73, opex = 0.186, tax = 0.1588
 
-  const yr10EPS = nDcfFull.value.yr10EPS
-  // impliedRev = (yr10EPS × dilutedShares) / (GM × (1 - opex) × (1 - tax))
+  const path = nDcfFull.value.valuePath
+  const yr10EPS = path[path.length - 1] ?? 0
+  // impliedRev ($) = (yr10EPS × dilutedShares) / (GM × (1 - opex) × (1 - tax))
   const impliedRev = yr10EPS * dilutedShares / gm / (1 - opex) / (1 - tax)
 
   return {
@@ -834,11 +870,11 @@ const bDeGainSeries = computed(() => [
 
 // BX Staged DCF with CAPM-derived discount rate (uses DpS, not DE)
 const bDiscountRate = computed(() => {
-  const cfg = TICKER_CONFIG.BX
-  if (cfg.capm) {
-    return cfg.capm.rf + cfg.capm.beta * cfg.capm.erp
+  const capm = bxState.capm ?? TICKER_CONFIG.BX.capm
+  if (capm) {
+    return capm.rf + capm.beta * capm.erp
   }
-  return cfg.discountRateOverride / 100  // fallback
+  return TICKER_CONFIG.BX.discountRateOverride / 100  // fallback
 })
 
 const bDcfFull = computed(() => computeStagedDCF({
@@ -916,15 +952,22 @@ const gTerminalDiverges = computed(() => gDcfFull.value.terminalDiverges)
 const gTerminalPercent = computed(() => gDcfFull.value.terminalAsPercentOfIntrinsic)
 
 // Keep old breakdown for backward compat
-const gDcfBreakdown = computed(() => ({
-  valuePath: gDcfFull.value.valuePath,
-  pvPath: gDcfFull.value.pvPath,
-  intrinsic: gDcfFull.value.intrinsic,
-  Rx: gDcfFull.value.Rx,
-  mult: gDcfFull.value.mult,
-  terminalNumerator: gDcfFull.value.terminalNumerator,
-  pvTerminal: gDcfFull.value.pvTerminal,
-}))
+const gDcfBreakdown = computed(() => {
+  const full = gDcfFull.value
+  return {
+    valuePath: full.valuePath,
+    pvPath: full.pvPath,
+    intrinsic: full.intrinsic,
+    Rx: full.Rx,
+    mult: full.mult,
+    terminalNumerator: full.terminalNumerator,
+    pvTerminal: full.pvTerminal,
+    pvEarnings: full.intrinsic - full.pvTerminal,
+    floor: full.intrinsic,
+    yr5EPS: full.valuePath[4] ?? 0,
+    yr10EPS: full.valuePath[full.valuePath.length - 1] ?? 0,
+  }
+})
 const gVsFloor = computed(() => (gFloor.value - googlPrice.value) / googlPrice.value)
 
 // Revenue model — FY2026 (calendar 2026)
@@ -1929,6 +1972,7 @@ onMounted(async () => {
   Object.assign(nvdaState, cloneConfigForReactive(TICKER_CONFIG.NVDA))
   Object.assign(bxState, cloneConfigForReactive(TICKER_CONFIG.BX))
   Object.assign(googlState, cloneConfigForReactive(TICKER_CONFIG.GOOGL))
+  if (TICKER_CONFIG.NVDA.defaultScenario) applyNVDAScenario(TICKER_CONFIG.NVDA.defaultScenario)
 
   isLg.value = window.matchMedia('(min-width: 1024px)').matches
   sidebarOpen.value = isLg.value
@@ -2171,7 +2215,7 @@ watch(watchlist, () => {
           <div class="insight">Quick-load predefined scenarios: growth rates, terminal assumptions, and P/E multiples. Each preset applies a complete configuration to the DCF and valuation models. Click to apply; sliders adjust independently afterward.
             <span v-if="nActiveScenario.active" class="ml-2 text-zinc-400">
               Active: <strong>{{ nScenarioButtonLabel }}</strong>
-              <button type="button" @click="applyNVDAScenario(nActiveScenario.active)" class="ml-1 text-blue-400 hover:text-blue-300 underline text-[12px]" v-if="nScenarioButtonLabel?.includes('modified')">reset</button>
+              <button type="button" @click="applyNVDAScenario(nActiveScenario.active)" class="ml-1 text-blue-400 hover:text-blue-300 underline text-[12px]" v-if="nActiveScenario.isDirty">reset to {{ TICKER_CONFIG.NVDA.scenarios[nActiveScenario.active].label }}</button>
             </span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2324,7 +2368,7 @@ watch(watchlist, () => {
           <div class="insight">This is a present-value estimate, not a price target. It grows consensus EPS for 2 years, then applies staged growth rates for 8 years, discounts those future dollars back at {{ nD }}%, and derives terminal value using the Rx formula.</div>
           <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
           <div class="insight" :class="nDcfImpliedRev.flagged ? 'rev-sanity-warning' : ''">
-            <strong>Yr-10 implied revenue:</strong> {{ dlr(nDcfImpliedRev.value / 1000) }}T
+            <strong>Yr-10 implied revenue:</strong> {{ dlr(nDcfImpliedRev.value / 1e12) }}T
             <span v-if="nDcfImpliedRev.flagged" class="rev-sanity-flag" title="This growth path implies annual revenue larger than the entire current global semiconductor industry. Confirm this is intended.">
               ⚠️ Exceeds sanity ceiling ($1.5T)
             </span>
