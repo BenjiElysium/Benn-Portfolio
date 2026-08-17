@@ -22,7 +22,9 @@ export const NVDA_CONFIG = {
   ],
   terminal: { growth: 0.15, years: 10 },
   revenueModel: { q1: 78, q2: 93.5, q3: 112.5, q4: 140 },
-  priceFallback: 176.63,
+  // Seeds internal chart/positioning math only. UI shows a skeleton until the
+  // live quote resolves — never displayed as a live price, never used for verdicts.
+  priceFallback: 227.00,
   historicalMultiple: [
     { label: 'Current', value: 35.24 },
     { label: 'Jan 2026', value: 47.31 },
@@ -128,7 +130,8 @@ export const BX_CONFIG = {
   terminal: { growth: 0.12, years: 20 },
   payoutRatio: 85,
   revenueModel: null,  // BX doesn't have a quarterly revenue model in the UI
-  priceFallback: 114.52,
+  // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
+  priceFallback: 141.99,
   historicalMultiple: [
     { label: 'Current', value: 27.36 },
     { label: 'Q4 2025', value: 27.36 },
@@ -219,7 +222,8 @@ export const GOOGL_CONFIG = {
   ],
   terminal: { growth: 0.12, years: 10 },
   revenueModel: { q1: 90, q2: 97, q3: 103, q4: 110 },
-  priceFallback: 160.00,
+  // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
+  priceFallback: 344.72,
   historicalMultiple: [
     { label: 'Current', value: 20.12 },
     { label: 'Jan 2025', value: 22.48 },

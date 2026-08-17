@@ -5,6 +5,7 @@ import {
   computeHistoricalStats,
   computeStagedDCF,
   extractFinnhubPESeries,
+  getVerdict,
 } from '~/composables/useStockValuation.js'
 import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario } from '~/config/tickerConfig.mjs'
 
@@ -22,6 +23,19 @@ const activeTab = ref('nvda')
 
 const prices = reactive({})
 const prevPrices = reactive({})
+
+// ─── Price resolution state ───────────────────────────────────
+// ticker → 'pending' | 'resolved' | 'error'. Verdicts, live multiples, and
+// "% from today" figures are suppressed until 'resolved' — never computed
+// from the config fallback price. Once resolved, a failed poll does not
+// downgrade the state (a stale real price is still a real price).
+const priceStates = reactive({})
+const nPriceState = computed(() => priceStates['NVDA'] ?? 'pending')
+const bPriceState = computed(() => priceStates['BX'] ?? 'pending')
+const gPriceState = computed(() => priceStates['GOOGL'] ?? 'pending')
+const nPriceReady = computed(() => nPriceState.value === 'resolved')
+const bPriceReady = computed(() => bPriceState.value === 'resolved')
+const gPriceReady = computed(() => gPriceState.value === 'resolved')
 const statusText = ref('Fetching prices...')
 const livePaused = ref(false)
 const POLL_INTERVAL_MS = 30_000
@@ -254,7 +268,7 @@ const nH5 = computed({
   set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const nD = computed({
-  get: () => (nDiscountRate.value * 100).toFixed(2),
+  get: () => +(nDiscountRate.value * 100).toFixed(2),
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
 })
 const nCapmRf = computed({
@@ -316,7 +330,7 @@ const bG = computed({
   set: (v) => { bxState.projectionGrowth = v }
 })
 const bD = computed({
-  get: () => (bDiscountRate.value * 100).toFixed(2),
+  get: () => +(bDiscountRate.value * 100).toFixed(2),
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
 })
 const bCapmRf = computed({
@@ -368,7 +382,7 @@ const gH5 = computed({
   set: (v) => { /* read-only; derived from staged growth config */ }
 })
 const gD = computed({
-  get: () => (TICKER_CONFIG.GOOGL.discountRateOverride * 100).toFixed(2),
+  get: () => +(TICKER_CONFIG.GOOGL.discountRateOverride * 100).toFixed(2),
   set: (v) => { /* read-only; discount rate is hardcoded fallback */ }
 })
 const gBaseEPS = computed({
@@ -643,6 +657,12 @@ const nScenarioCaption = computed(() => {
   const bullFloor = nScenarioFloors.value.bull?.floor ?? 0
   const price = nvdaPrice.value
 
+  if (nPriceState.value === 'error') {
+    return 'Live price unavailable — scenario floors shown without a spot comparison.'
+  }
+  if (!nPriceReady.value) {
+    return 'Fetching live price… scenario floors shown below.'
+  }
   if (price < bearFloor) {
     return `At $${price.toFixed(2)}, NVDA is priced below the Bear case.`
   } else if (price >= bearFloor && price < baseFloor) {
@@ -776,7 +796,9 @@ const nEpsGainSeries = computed(() => {
 })
 
 // NVDA conviction signal — based on current P/E vs normal historical range
+// Suppressed until the live quote resolves — never rendered off a fallback price.
 const nConviction = computed(() => {
+  if (!nPriceReady.value) return null
   const pe = nHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = nHistStats.value
@@ -896,29 +918,36 @@ const bDeYears  = computed(() => {
 const bDistYears = computed(() => bDeYears.value.map(v => +(v * bPay.value / 100).toFixed(2)))
 const bYr3Yield  = computed(() => (bDistYears.value[3] / bxPrice.value) * 100)
 
-// BX conviction signal — based on current P/DE vs fair-range thresholds
+// BX conviction signal — based on current P/DE vs fair-range thresholds.
+// getVerdict returns null unless the live quote has resolved; the raw
+// prices map (no fallback) is passed on purpose.
 const bConviction = computed(() => {
-  const pde = bxCurrentPde.value
-  if (pde < 20) return {
-    signal: 'STRONG BUY', color: 'emerald',
-    reason: `P/DE ${pde}× — inside the historical buy zone (< 20×)`,
-    context: `Only ${bxHistBelowBuyZone.value} of ${bxQuarterCount} tracked quarters have reached this level. Rare entry.`,
-  }
-  if (pde < 22) return {
-    signal: 'BUY', color: 'green',
-    reason: `P/DE ${pde}× — below the 22× fair-range floor`,
-    context: `Approaching the lower bound of the 22–29× historical fair range.`,
-  }
-  if (pde <= 29) return {
-    signal: 'HOLD / FAIR', color: 'yellow',
-    reason: `P/DE ${pde}× — within the 22–29× fair range`,
-    context: `Multiple within the historically sourced fair-value band.`,
-  }
-  return {
-    signal: 'RICH', color: 'red',
-    reason: `P/DE ${pde}× — above the 29× fair-range ceiling`,
-    context: `Multiple extended beyond historical fair value. Compression risk elevated.`,
-  }
+  const v = getVerdict({
+    priceState: bPriceState.value,
+    price: prices['BX'],
+    dePerShare: BX_LATEST_DE_SOURCE.dePerShare,
+  })
+  if (!v) return null
+  const { signal, color, pde } = v
+  const detail = {
+    'STRONG BUY': {
+      reason: `P/DE ${pde}× — inside the historical buy zone (< 20×)`,
+      context: `Only ${bxHistBelowBuyZone.value} of ${bxQuarterCount} tracked quarters have reached this level. Rare entry.`,
+    },
+    'BUY': {
+      reason: `P/DE ${pde}× — below the 22× fair-range floor`,
+      context: `Approaching the lower bound of the 22–29× historical fair range.`,
+    },
+    'HOLD / FAIR': {
+      reason: `P/DE ${pde}× — within the 22–29× fair range`,
+      context: `Multiple within the historically sourced fair-value band.`,
+    },
+    'RICH': {
+      reason: `P/DE ${pde}× — above the 29× fair-range ceiling`,
+      context: `Multiple extended beyond historical fair value. Compression risk elevated.`,
+    },
+  }[signal]
+  return { signal, color, ...detail }
 })
 
 // ─── GOOGL computed ────────────────────────────────────────────
@@ -1028,6 +1057,7 @@ const gHistStats = computed(() => {
 })
 
 const gConviction = computed(() => {
+  if (!gPriceReady.value) return null
   const pe = gHistPE.value[0]?.value ?? null
   if (!pe) return null
   const { avg, sigma, low, high } = gHistStats.value
@@ -1858,11 +1888,21 @@ async function fetchQuotes(tickers) {
   if (!tickers.length) return
   try {
     const data = await $fetch(`/api/finnhub/quote?symbols=${tickers.join(',')}`)
-    for (const [ticker, q] of Object.entries(data)) {
-      prices[ticker]     = q.c
-      prevPrices[ticker] = q.pc
+    for (const ticker of tickers) {
+      const q = data[ticker]
+      if (q && Number.isFinite(q.c) && q.c > 0) {
+        prices[ticker]      = q.c
+        prevPrices[ticker]  = q.pc
+        priceStates[ticker] = 'resolved'
+      } else if (priceStates[ticker] !== 'resolved') {
+        priceStates[ticker] = 'error'
+      }
     }
-  } catch { /* silent — prices stay stale */ }
+  } catch {
+    for (const ticker of tickers) {
+      if (priceStates[ticker] !== 'resolved') priceStates[ticker] = 'error'
+    }
+  }
 }
 
 async function fetchNVDAMetrics() {
@@ -2173,18 +2213,25 @@ watch(watchlist, () => {
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="metric-card">
             <p class="mc-label">Current price</p>
-            <p class="mc-value">{{ dlr(nvdaPrice) }}</p>
-            <p class="mc-sub" :class="colCls(nvdaChg)">{{ absDlr(nvdaChg) }} ({{ pct(nvdaChgPct, 2) }})</p>
+            <p class="mc-value" v-if="nPriceReady">{{ dlr(nvdaPrice) }}</p>
+            <p class="mc-value price-unavailable" v-else-if="nPriceState === 'error'">unavailable</p>
+            <p class="mc-value" v-else><span class="skeleton-line" /></p>
+            <p class="mc-sub" v-if="nPriceReady" :class="colCls(nvdaChg)">{{ absDlr(nvdaChg) }} ({{ pct(nvdaChgPct, 2) }})</p>
+            <p class="mc-sub" v-else>{{ nPriceState === 'error' ? 'live quote failed' : 'fetching live price…' }}</p>
           </div>
           <div class="metric-card">
             <p class="mc-label">1yr target range</p>
             <p class="mc-value">{{ n1Range }}</p>
-            <p class="mc-sub">{{ n1RangeSub }}</p>
+            <p class="mc-sub" v-if="nPriceReady">{{ n1RangeSub }}</p>
+            <p class="mc-sub" v-else-if="nPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card">
             <p class="mc-label">2yr target range</p>
             <p class="mc-value">{{ n2Range }}</p>
-            <p class="mc-sub">{{ n2RangeSub }}</p>
+            <p class="mc-sub" v-if="nPriceReady">{{ n2RangeSub }}</p>
+            <p class="mc-sub" v-else-if="nPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card metric-card-help">
             <div class="mc-head">
@@ -2195,7 +2242,9 @@ watch(watchlist, () => {
               </div>
             </div>
             <p class="mc-value">{{ dlr(nFloor) }}</p>
-            <p class="mc-sub" :class="colCls(nVsFloor)">{{ nVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-if="nPriceReady" :class="colCls(nVsFloor)">{{ nVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-else-if="nPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
         </div>
 
@@ -2257,8 +2306,8 @@ watch(watchlist, () => {
               <circle :cx="`${nScenarioLinePositions.base}%`" cy="50%" r="2.5%" fill="url(#nl-grad-base)" />
               <!-- Bull marker -->
               <circle :cx="`${nScenarioLinePositions.bull}%`" cy="50%" r="2.5%" fill="url(#nl-grad-bull)" />
-              <!-- Price marker (hollow circle) -->
-              <circle :cx="`${nScenarioLinePositions.price}%`" cy="50%" r="2%" fill="none" stroke="#7dd3fc" stroke-width="0.3%" />
+              <!-- Price marker (hollow circle) — only once the live quote resolves -->
+              <circle v-if="nPriceReady" :cx="`${nScenarioLinePositions.price}%`" cy="50%" r="2%" fill="none" stroke="#7dd3fc" stroke-width="0.3%" />
             </svg>
           </div>
 
@@ -2285,9 +2334,9 @@ watch(watchlist, () => {
               <tr v-for="(label, key) in { bear: 'Bear', base: 'Base', bull: 'Bull' }" :key="key">
                 <td><strong>{{ label }}</strong></td>
                 <td style="text-align: right;">${{ nScenarioFloors[key]?.yr10EPS.toFixed(2) }}</td>
-                <td style="text-align: right;">${{ (nScenarioImpliedRev[key] / 1000).toFixed(1) }}B</td>
+                <td style="text-align: right;">${{ (nScenarioImpliedRev[key] / 1000).toFixed(2) }}T</td>
                 <td style="text-align: right;">${{ nScenarioFloors[key]?.floor.toFixed(2) }}</td>
-                <td style="text-align: right;" :class="colCls(nvdaPrice - nScenarioFloors[key]?.floor)">{{ pct((nvdaPrice - nScenarioFloors[key]?.floor) / nScenarioFloors[key]?.floor, 1) }}</td>
+                <td style="text-align: right;" :class="nPriceReady ? colCls(nvdaPrice - nScenarioFloors[key]?.floor) : ''">{{ nPriceReady ? pct((nvdaPrice - nScenarioFloors[key]?.floor) / nScenarioFloors[key]?.floor, 1) : '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -2338,13 +2387,13 @@ watch(watchlist, () => {
 
           <div class="section-label">1-year targets</div>
           <div class="targets">
-            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="colCls(nP1h - nvdaPrice)">{{ dlr(nP1h) }}</div><div class="tret">{{ pct((nP1h - nvdaPrice) / nvdaPrice) }} from today</div></div>
-            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(nP1l - nvdaPrice)">{{ dlr(nP1l) }}</div><div class="tret">{{ pct((nP1l - nvdaPrice) / nvdaPrice) }} from today</div></div>
+            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="nPriceReady ? colCls(nP1h - nvdaPrice) : ''">{{ dlr(nP1h) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP1h - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="nPriceReady ? colCls(nP1l - nvdaPrice) : ''">{{ dlr(nP1l) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP1l - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
           <div class="section-label">2-year targets</div>
           <div class="targets">
-            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="colCls(nP2h - nvdaPrice)">{{ dlr(nP2h) }}</div><div class="tret">{{ pct((nP2h - nvdaPrice) / nvdaPrice) }} from today</div></div>
-            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(nP2l - nvdaPrice)">{{ dlr(nP2l) }}</div><div class="tret">{{ pct((nP2l - nvdaPrice) / nvdaPrice) }} from today</div></div>
+            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="nPriceReady ? colCls(nP2h - nvdaPrice) : ''">{{ dlr(nP2h) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP2h - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="nPriceReady ? colCls(nP2l - nvdaPrice) : ''">{{ dlr(nP2l) }}</div><div class="tret" v-if="nPriceReady">{{ pct((nP2l - nvdaPrice) / nvdaPrice) }} from today</div><div class="tret" v-else-if="nPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
 
           <div class="chart-toolbar">
@@ -2480,23 +2529,32 @@ watch(watchlist, () => {
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="metric-card">
             <p class="mc-label">Current price</p>
-            <p class="mc-value">{{ dlr(bxPrice) }}</p>
-            <p class="mc-sub" :class="colCls(bxChg)">{{ absDlr(bxChg) }} ({{ pct(bxChgPct, 2) }})</p>
+            <p class="mc-value" v-if="bPriceReady">{{ dlr(bxPrice) }}</p>
+            <p class="mc-value price-unavailable" v-else-if="bPriceState === 'error'">unavailable</p>
+            <p class="mc-value" v-else><span class="skeleton-line" /></p>
+            <p class="mc-sub" v-if="bPriceReady" :class="colCls(bxChg)">{{ absDlr(bxChg) }} ({{ pct(bxChgPct, 2) }})</p>
+            <p class="mc-sub" v-else>{{ bPriceState === 'error' ? 'live quote failed' : 'fetching live price…' }}</p>
           </div>
           <div class="metric-card">
             <p class="mc-label">1yr target range</p>
             <p class="mc-value">{{ b1Range }}</p>
-            <p class="mc-sub">{{ b1RangeSub }}</p>
+            <p class="mc-sub" v-if="bPriceReady">{{ b1RangeSub }}</p>
+            <p class="mc-sub" v-else-if="bPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card">
             <p class="mc-label">2yr target range</p>
             <p class="mc-value">{{ b2Range }}</p>
-            <p class="mc-sub">{{ b2RangeSub }}</p>
+            <p class="mc-sub" v-if="bPriceReady">{{ b2RangeSub }}</p>
+            <p class="mc-sub" v-else-if="bPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card">
             <p class="mc-label">10yr intrinsic floor</p>
             <p class="mc-value">{{ dlr(bFloor) }}</p>
-            <p class="mc-sub" :class="colCls(bVsFloor)">{{ bVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-if="bPriceReady" :class="colCls(bVsFloor)">{{ bVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-else-if="bPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
         </div>
 
@@ -2522,7 +2580,9 @@ watch(watchlist, () => {
             </div>
             <div class="tcard">
               <div class="tlabel">Live P/DE</div>
-              <div class="tprice" :class="bxCurrentPde < 20 ? 'amber' : ''">{{ bxCurrentPde.toFixed(2) }}&times;</div>
+              <div class="tprice" v-if="bPriceReady" :class="bxCurrentPde < 20 ? 'amber' : ''">{{ bxCurrentPde.toFixed(2) }}&times;</div>
+              <div class="tprice price-unavailable" v-else-if="bPriceState === 'error'">unavailable</div>
+              <div class="tprice" v-else><span class="skeleton-line" /></div>
               <div class="tret">{{ BX_LATEST_DE_SOURCE.label }} DE/share {{ dlr(BX_LATEST_DE_SOURCE.dePerShare) }}</div>
             </div>
             <div class="tcard hero">
@@ -2533,12 +2593,12 @@ watch(watchlist, () => {
             <div class="tcard hero">
               <div class="tlabel">Buy-zone touches</div>
               <div class="tprice">{{ bxHistBelowBuyZone }}&thinsp;/&thinsp;{{ bxQuarterCount }}</div>
-              <div class="tret">{{ bxCurrentBelowBuyZone ? 'live point also below 20×' : 'historical quarters below 20×' }}</div>
+              <div class="tret">{{ bPriceReady && bxCurrentBelowBuyZone ? 'live point also below 20×' : 'historical quarters below 20×' }}</div>
             </div>
           </div>
 
           <div class="bx-hist-note">
-            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters &mdash; historically a strong re-entry signal. Live reading: <strong>{{ bxCurrentPde.toFixed(2) }}&times;</strong>.
+            P/DE has touched below 20&times; in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters &mdash; historically a strong re-entry signal. Live reading: <strong v-if="bPriceReady">{{ bxCurrentPde.toFixed(2) }}&times;</strong><span v-else>{{ bPriceState === 'error' ? 'unavailable' : 'pending…' }}</span>.
           </div>
 
           <div class="chart-wrap" style="height:340px"><canvas ref="bHistPdeCanvas" /></div>
@@ -2560,13 +2620,13 @@ watch(watchlist, () => {
 
           <div class="section-label">1-year targets</div>
           <div class="targets">
-            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="colCls(bP1h - bxPrice)">{{ dlr(bP1h) }}</div><div class="tret">{{ pct((bP1h - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld1) }} yield = {{ pct((bP1h - bxPrice) / bxPrice + bYld1) }} total return</div></div>
-            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(bP1l - bxPrice)">{{ dlr(bP1l) }}</div><div class="tret">{{ pct((bP1l - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld1) }} yield = {{ pct((bP1l - bxPrice) / bxPrice + bYld1) }} total return</div></div>
+            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="bPriceReady ? colCls(bP1h - bxPrice) : ''">{{ dlr(bP1h) }}</div><template v-if="bPriceReady"><div class="tret">{{ pct((bP1h - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld1) }} yield = {{ pct((bP1h - bxPrice) / bxPrice + bYld1) }} total return</div></template><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="bPriceReady ? colCls(bP1l - bxPrice) : ''">{{ dlr(bP1l) }}</div><template v-if="bPriceReady"><div class="tret">{{ pct((bP1l - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld1) }} yield = {{ pct((bP1l - bxPrice) / bxPrice + bYld1) }} total return</div></template><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
           <div class="section-label">2-year targets</div>
           <div class="targets">
-            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="colCls(bP2h - bxPrice)">{{ dlr(bP2h) }}</div><div class="tret">{{ pct((bP2h - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld2) }} yield = {{ pct((bP2h - bxPrice) / bxPrice + bYld2) }} total return</div></div>
-            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(bP2l - bxPrice)">{{ dlr(bP2l) }}</div><div class="tret">{{ pct((bP2l - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld2) }} yield = {{ pct((bP2l - bxPrice) / bxPrice + bYld2) }} total return</div></div>
+            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="bPriceReady ? colCls(bP2h - bxPrice) : ''">{{ dlr(bP2h) }}</div><template v-if="bPriceReady"><div class="tret">{{ pct((bP2h - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld2) }} yield = {{ pct((bP2h - bxPrice) / bxPrice + bYld2) }} total return</div></template><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="bPriceReady ? colCls(bP2l - bxPrice) : ''">{{ dlr(bP2l) }}</div><template v-if="bPriceReady"><div class="tret">{{ pct((bP2l - bxPrice) / bxPrice) }} from today</div><div class="tyield">+ {{ pct(bYld2) }} yield = {{ pct((bP2l - bxPrice) / bxPrice + bYld2) }} total return</div></template><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
 
           <div class="chart-toolbar">
@@ -2601,8 +2661,8 @@ watch(watchlist, () => {
           <div class="card-title">DE growth projection &mdash; 3-year outlook</div>
           <div class="targets">
             <div class="tcard"><div class="tlabel">Yr 3 DE/share</div><div class="tprice">{{ dlr(bDeYears[3]) }}</div><div class="tret">{{ pct(Math.pow(1 + bG / 100, 3) - 1) }} cumulative growth</div></div>
-            <div class="tcard"><div class="tlabel">Yr 3 distribution</div><div class="tprice">{{ dlr(bDistYears[3]) }}</div><div class="tret">{{ bYr3Yield.toFixed(1) }}% yield on today's price</div></div>
-            <div class="tcard"><div class="tlabel">Yr 1 yield</div><div class="tprice">{{ (bYld1 * 100).toFixed(2) }}%</div><div class="tret">{{ dlr(bPay / 100 * bDe1) }}/share</div></div>
+            <div class="tcard"><div class="tlabel">Yr 3 distribution</div><div class="tprice">{{ dlr(bDistYears[3]) }}</div><div class="tret" v-if="bPriceReady">{{ bYr3Yield.toFixed(1) }}% yield on today's price</div><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard"><div class="tlabel">Yr 1 yield</div><div class="tprice" v-if="bPriceReady">{{ (bYld1 * 100).toFixed(2) }}%</div><div class="tprice" v-else-if="bPriceState === 'error'">—</div><div class="tprice" v-else><span class="skeleton-line" /></div><div class="tret">{{ dlr(bPay / 100 * bDe1) }}/share</div></div>
             <div class="tcard"><div class="tlabel">10yr intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div></div>
           </div>
           <div class="chart-wrap"><canvas ref="bDeCanvas" /></div>
@@ -2635,7 +2695,9 @@ watch(watchlist, () => {
             </div>
             <div class="tcard">
               <div class="tlabel">Projected yield</div>
-              <div class="tprice">{{ (bYld1 * 100).toFixed(1) }}%</div>
+              <div class="tprice" v-if="bPriceReady">{{ (bYld1 * 100).toFixed(1) }}%</div>
+              <div class="tprice" v-else-if="bPriceState === 'error'">—</div>
+              <div class="tprice" v-else><span class="skeleton-line" /></div>
               <div class="tret">based on payout slider</div>
             </div>
           </div>
@@ -2673,18 +2735,25 @@ watch(watchlist, () => {
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="metric-card">
             <p class="mc-label">Current price</p>
-            <p class="mc-value">{{ dlr(googlPrice) }}</p>
-            <p class="mc-sub" :class="colCls(googlChg)">{{ absDlr(googlChg) }} ({{ pct(googlChgPct, 2) }})</p>
+            <p class="mc-value" v-if="gPriceReady">{{ dlr(googlPrice) }}</p>
+            <p class="mc-value price-unavailable" v-else-if="gPriceState === 'error'">unavailable</p>
+            <p class="mc-value" v-else><span class="skeleton-line" /></p>
+            <p class="mc-sub" v-if="gPriceReady" :class="colCls(googlChg)">{{ absDlr(googlChg) }} ({{ pct(googlChgPct, 2) }})</p>
+            <p class="mc-sub" v-else>{{ gPriceState === 'error' ? 'live quote failed' : 'fetching live price…' }}</p>
           </div>
           <div class="metric-card">
             <p class="mc-label">1yr target range</p>
             <p class="mc-value">{{ g1Range }}</p>
-            <p class="mc-sub">{{ g1RangeSub }}</p>
+            <p class="mc-sub" v-if="gPriceReady">{{ g1RangeSub }}</p>
+            <p class="mc-sub" v-else-if="gPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card">
             <p class="mc-label">2yr target range</p>
             <p class="mc-value">{{ g2Range }}</p>
-            <p class="mc-sub">{{ g2RangeSub }}</p>
+            <p class="mc-sub" v-if="gPriceReady">{{ g2RangeSub }}</p>
+            <p class="mc-sub" v-else-if="gPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card metric-card-help">
             <div class="mc-head">
@@ -2695,7 +2764,9 @@ watch(watchlist, () => {
               </div>
             </div>
             <p class="mc-value">{{ dlr(gFloor) }}</p>
-            <p class="mc-sub" :class="colCls(gVsFloor)">{{ gVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-if="gPriceReady" :class="colCls(gVsFloor)">{{ gVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
+            <p class="mc-sub" v-else-if="gPriceState === 'error'">price unavailable</p>
+            <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
         </div>
 
@@ -2751,13 +2822,13 @@ watch(watchlist, () => {
 
           <div class="section-label">1-year targets</div>
           <div class="targets">
-            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="colCls(gP1h - googlPrice)">{{ dlr(gP1h) }}</div><div class="tret">{{ pct((gP1h - googlPrice) / googlPrice) }} from today</div></div>
-            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(gP1l - googlPrice)">{{ dlr(gP1l) }}</div><div class="tret">{{ pct((gP1l - googlPrice) / googlPrice) }} from today</div></div>
+            <div class="tcard hero"><div class="tlabel">High target</div><div class="tprice" :class="gPriceReady ? colCls(gP1h - googlPrice) : ''">{{ dlr(gP1h) }}</div><div class="tret" v-if="gPriceReady">{{ pct((gP1h - googlPrice) / googlPrice) }} from today</div><div class="tret" v-else-if="gPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard hero"><div class="tlabel">Low target</div><div class="tprice" :class="gPriceReady ? colCls(gP1l - googlPrice) : ''">{{ dlr(gP1l) }}</div><div class="tret" v-if="gPriceReady">{{ pct((gP1l - googlPrice) / googlPrice) }} from today</div><div class="tret" v-else-if="gPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
           <div class="section-label">2-year targets</div>
           <div class="targets">
-            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="colCls(gP2h - googlPrice)">{{ dlr(gP2h) }}</div><div class="tret">{{ pct((gP2h - googlPrice) / googlPrice) }} from today</div></div>
-            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="colCls(gP2l - googlPrice)">{{ dlr(gP2l) }}</div><div class="tret">{{ pct((gP2l - googlPrice) / googlPrice) }} from today</div></div>
+            <div class="tcard"><div class="tlabel">High target</div><div class="tprice" :class="gPriceReady ? colCls(gP2h - googlPrice) : ''">{{ dlr(gP2h) }}</div><div class="tret" v-if="gPriceReady">{{ pct((gP2h - googlPrice) / googlPrice) }} from today</div><div class="tret" v-else-if="gPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
+            <div class="tcard"><div class="tlabel">Low target</div><div class="tprice" :class="gPriceReady ? colCls(gP2l - googlPrice) : ''">{{ dlr(gP2l) }}</div><div class="tret" v-if="gPriceReady">{{ pct((gP2l - googlPrice) / googlPrice) }} from today</div><div class="tret" v-else-if="gPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
           </div>
 
           <div class="chart-toolbar">
@@ -3136,5 +3207,27 @@ tr:hover td { background: var(--c-bg2); }
   font-weight: 500;
   margin-left: 6px;
   cursor: help;
+}
+
+/* ── Price-resolution skeletons ─────────────────────────────── */
+.skeleton-line {
+  display: inline-block;
+  width: 84px;
+  height: 1em;
+  border-radius: 4px;
+  vertical-align: middle;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-sm { width: 64px; height: 0.8em; }
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.price-unavailable {
+  color: #71717a;
+  font-style: italic;
+  font-size: 15px;
 }
 </style>

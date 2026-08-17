@@ -15,6 +15,29 @@
  * @property {number}              terminalMultiplier  — e.g. 10 for NVDA, 20 for BX
  */
 
+// ─── Price-gated verdict ─────────────────────────────────────────────────────
+
+/**
+ * Compute a buy/sell/hold verdict from a live price, gated on price resolution.
+ * Returns null unless priceState === 'resolved' AND price is a positive finite
+ * number — a config fallback price must never produce a verdict.
+ * Threshold defaults mirror the BX historical P/DE analysis
+ * (buy zone < 20×, fair range 22–29×, LTM Q1 2026 DE/share $5.84).
+ *
+ * @param {{ priceState:'pending'|'resolved'|'error', price:number,
+ *           dePerShare?:number, buyZone?:number, fairLow?:number, fairHigh?:number }} args
+ * @returns {{ signal:string, color:string, pde:number }|null}
+ */
+export function getVerdict({ priceState, price, dePerShare = 5.84, buyZone = 20, fairLow = 22, fairHigh = 29 }) {
+  if (priceState !== 'resolved') return null
+  if (!Number.isFinite(price) || price <= 0) return null
+  const pde = +(price / dePerShare).toFixed(2)
+  if (pde < buyZone)  return { signal: 'STRONG BUY', color: 'emerald', pde }
+  if (pde < fairLow)  return { signal: 'BUY', color: 'green', pde }
+  if (pde <= fairHigh) return { signal: 'HOLD / FAIR', color: 'yellow', pde }
+  return { signal: 'RICH', color: 'red', pde }
+}
+
 // ─── Historical stats ─────────────────────────────────────────────────────────
 
 /**
