@@ -11,12 +11,23 @@ export const NVDA_CONFIG = {
   valuationMetric: 'EPS',
   baseValue: 4.77,  // normalized non-GAAP (not GAAP 4.90) — DCF seed, NOT the live P/E denominator
   baseValueLabel: 'FY2026 normalized non-GAAP EPS',
-  // Rolling trailing-twelve-months normalized non-GAAP EPS for the live P/E point.
-  // Covers Q2 FY2026 (1.05) + Q3 FY2026 (1.30) + Q4 FY2026 (1.46) + Q1 FY2027 (3.02):
-  // FY2026 total 4.77 − Q1 FY2026 0.96 + Q1 FY2027 3.02 = 6.83.
-  // As of Q1 FY2027 results (quarter ended 2026-04-26); consistent with the source
-  // spreadsheet's TTM P/E of 33.0 at $225.31. Distinct from baseValue by design.
-  ttmEps: 6.83,
+  // Rolling trailing-twelve-months non-GAAP diluted EPS for the live P/E point.
+  // Construction: FY2026 total − Q1 FY2026 + Q1 FY2027 = 4.77 − 0.81 + 1.87 = 5.83.
+  // All figures verified against NVIDIA earnings releases (nvidianews.nvidia.com),
+  // as-reported non-GAAP diluted EPS:
+  //   Q1 FY2026 (ended 2025-04-27): 0.81  — Q1 FY2026 release (0.96 ex-H20; the
+  //                                         charge sits in this DROPPED quarter, so
+  //                                         the as-reported figure is the right one)
+  //   Q2 FY2026 (ended 2025-07-27): 1.05  — Q2 FY2026 release
+  //   Q3 FY2026 (ended 2025-10-26): 1.30  — Q3 FY2026 release
+  //   Q4 FY2026 (ended 2026-01-25): 1.62  — Q4/FY2026 release
+  //   Q1 FY2027 (ended 2026-04-26): 1.87  — Q1 FY2027 release
+  // Quarters sum to 4.78 vs full-year 4.77 (weighted-average share-count artifact).
+  // As of the Q1 FY2027 release (May 2026). Distinct from baseValue by design.
+  // NOTE: the source spreadsheet's "TTM P/E 33.0 @ $225.31" implies ~6.83 TTM EPS,
+  // which no combination of filed quarters reproduces — likely a forward/blended
+  // cell, flagged upstream. Do not re-derive this field from that anchor.
+  ttmEps: 5.83,
   forward: { y1: 8.98, y2: 12.79 },  // updated consensus estimates
   multipleBand: { min: 39.5, max: 58.9 },
   projectionGrowth: 33.6,
