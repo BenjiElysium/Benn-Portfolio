@@ -110,7 +110,7 @@ export const NVDA_CONFIG = {
       label: 'Base',
       description: 'Consensus through FY2028, then decelerating toward a '
                  + 'mature growth rate. Multiple band floor is the '
-                 + 'spreadsheet Qtr-12 P/E trend estimate of 29.4x.',
+                 + 'Qtr-12 P/E trend estimate of 29.4x.',
       seedValues: [8.98, 12.79],
       growthStages: [
         { years: 3, rate: 0.20 },
@@ -122,8 +122,9 @@ export const NVDA_CONFIG = {
 
     bull: {
       label: 'Bull',
-      description: 'Source spreadsheet analysis. Reproduces the '
-                 + 'authoritative model exactly.',
+      description: 'Sustained hyper-growth: 30% for three years, then 20%, '
+                 + 'with a 15% terminal. The ceiling case — no scenario '
+                 + 'models above it.',
       seedValues: [8.98, 12.79],
       growthStages: [
         { years: 3, rate: 0.30 },

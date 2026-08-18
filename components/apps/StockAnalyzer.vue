@@ -2464,7 +2464,7 @@ watch(watchlist, () => {
             <span class="legend-item"><span class="legend-fill" />Historical range (descriptive)</span>
             <span v-if="nPriceReady" class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />Trend (4Q forward)</span>
           </div>
-          <p class="note">Canonical series from the source analysis ({{ NVDA_PE_CANONICAL.length }} completed quarters); the Current point is live price &divide; TTM normalized EPS. Never overwritten by API data.</p>
+          <p class="note">Canonical completed-quarter series ({{ NVDA_PE_CANONICAL.length }} quarters); the Current point is live price &divide; TTM normalized EPS. Never overwritten by API data.</p>
         </div>
 
         <!-- ── P/E Projection card ─────────────────────────────── -->
@@ -2669,11 +2669,13 @@ watch(watchlist, () => {
         <div class="glossary-body" :class="{ open: nvdaGlossaryOpen }">
           <div class="gterm"><span class="gterm-name">EPS</span><span class="gterm-def">Earnings per share &mdash; the company's net profit divided by total shares.</span></div>
           <div class="gterm"><span class="gterm-name">Forward EPS</span><span class="gterm-def">An analyst's estimate of EPS over the next 12 months &mdash; projected, not yet reported.</span></div>
-          <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. Sliders now default to the normal historical range.</span></div>
-          <div class="gterm"><span class="gterm-name">Two-phase DCF</span><span class="gterm-def">A discounted cash flow model split into a high-growth phase (yr 1&ndash;5 at g5) and a deceleration phase (yr 6&ndash;10 at h5). More realistic than a single-rate model for hyper-growth companies.</span></div>
-          <div class="gterm"><span class="gterm-name">Discount rate d</span><span class="gterm-def">The annual return you require to justify holding this stock. Set at 12% &mdash; the most conservative benchmark used by any major analyst.</span></div>
+          <div class="gterm"><span class="gterm-name">TTM P/E</span><span class="gterm-def">Price divided by trailing-twelve-month EPS &mdash; the live multiple plotted as the &ldquo;Current&rdquo; point on the historical chart.</span></div>
+          <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. The target sliders default to the active scenario's multiple band.</span></div>
+          <div class="gterm"><span class="gterm-name">Staged DCF</span><span class="gterm-def">A discounted cash flow model that starts from consensus seed years, applies editable staged growth rates after them, discounts at the CAPM-derived rate, and adds an Rx-derived terminal value.</span></div>
+          <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ nD }}%). Edit rf, erp, and beta in the model inputs.</span></div>
+          <div class="gterm"><span class="gterm-name">Scenario preset</span><span class="gterm-def">A complete model configuration &mdash; seed years, growth stages, terminal assumptions, and multiple band. Bear, Base, and Bull; the conviction banner grades the live multiple against the active scenario's band.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum a stock should be worth based on DCF. A margin-of-safety check, not a price target.</span></div>
-          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">A lump-sum estimate of the business's value beyond year 10: year-10 EPS &times; 10, discounted to present.</span></div>
+          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">The business's value beyond the projection years, from the Rx formula: Rx = (1 + terminal growth) &divide; (1 + d); multiple = Rx &times; (Rx<sup>years</sup> &minus; 1) &divide; (Rx &minus; 1) &mdash; not a fixed exit multiple.</span></div>
         </div>
       </div>
 
@@ -2804,7 +2806,7 @@ watch(watchlist, () => {
         <!-- BX DCF -->
         <div class="card">
           <div class="card-title">20yr staged DCF (DpS-based) &mdash; intrinsic floor</div>
-          <div class="insight">This uses Distributions per Share (not DE) and applies the Rx-derived terminal formula over 20 years. Terminal growth (12%) exceeds discount rate (10.78%), so terminal value grows with each additional year &mdash; this is intentional per the source analysis.</div>
+          <div class="insight">This uses Distributions per Share (not DE) and applies the Rx-derived terminal formula over 20 years. Terminal growth (12%) exceeds discount rate (10.78%), so terminal value grows with each additional year &mdash; this is a deliberate modeling choice, not an error.</div>
           <div class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
             <strong>⚠️ Divergent terminal:</strong> Terminal value represents ~{{ (bTerminalPercent * 100).toFixed(0) }}% of intrinsic floor. The 20-year terminal count is a material assumption; adjust it to stress-test the floor.
           </div>
@@ -2888,12 +2890,14 @@ watch(watchlist, () => {
         </button>
         <div class="glossary-body" :class="{ open: bxGlossaryOpen }">
           <div class="gterm"><span class="gterm-name">DE (distributable earnings)</span><span class="gterm-def">The cash BX actually generates and can pay out. All Wall Street analysts use DE when valuing Blackstone.</span></div>
+          <div class="gterm"><span class="gterm-name">DpS (distributions per share)</span><span class="gterm-def">The cash Blackstone actually pays out to shareholders, per share. Equal to DE &times; payout ratio &mdash; DE is what it earns; DpS is what it pays. The 20yr DCF discounts DpS, not DE.</span></div>
           <div class="gterm"><span class="gterm-name">P/DE multiple</span><span class="gterm-def">Price-to-distributable-earnings &mdash; BX's equivalent of a P/E ratio.</span></div>
+          <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ bD }}%). Edit rf, erp, and beta in the DCF card.</span></div>
           <div class="gterm"><span class="gterm-name">Payout ratio</span><span class="gterm-def">The percentage of DE paid out to shareholders as cash distributions. BX historically pays ~85%.</span></div>
           <div class="gterm"><span class="gterm-name">Distribution</span><span class="gterm-def">Cash paid regularly to shareholders. Equal to DE &times; payout ratio. The yield component of total return.</span></div>
           <div class="gterm"><span class="gterm-name">Total return</span><span class="gterm-def">Price appreciation plus yield (distributions received). For BX, yield is a meaningful part of the investment case.</span></div>
           <div class="gterm"><span class="gterm-name">Buy zone (&lt;20&times;)</span><span class="gterm-def">Historically, P/DE below 20&times; has been a reliable re-entry signal. It has occurred in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters.</span></div>
-          <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future DE discounted to today's dollars.</span></div>
+          <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future distributions per share (DpS) discounted to today's dollars.</span></div>
         </div>
       </div>
 
@@ -3021,8 +3025,8 @@ watch(watchlist, () => {
         <div class="card">
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
           <div class="insight">This is a present-value estimate, not a price target. It grows EPS in two stages (20% for 5 years, then 12% for 5 years), discounts those future dollars back at {{ gD }}%, and derives terminal value using the Rx formula (not a fixed multiple).</div>
-          <div class="insight">Discount rate: <strong>{{ gD }}% — fixed override, read-only.</strong> No CAPM source analysis exists for GOOGL; a beta must be derived before switching to CAPM inputs (see config TODO).</div>
-          <div class="insight">⚠️ <strong>Economics changed from the previous fixed-10x method.</strong> Floor shifted from $341.65 to {{ dlr(gFloor) }} (+5.7%) due to the terminal method. Terminal value is now derived from the Rx formula rather than hardcoded. Growth inputs remain unreconciled to a source analysis.</div>
+          <div class="insight">Discount rate: <strong>{{ gD }}% — fixed override, read-only.</strong> GOOGL has no CAPM inputs yet; a beta must be derived before switching from the override.</div>
+          <div class="insight">⚠️ <strong>Economics changed from the previous fixed-10x method.</strong> Floor shifted from $341.65 to {{ dlr(gFloor) }} (+5.7%) due to the terminal method. Terminal value is now derived from the Rx formula rather than hardcoded. Growth inputs are provisional estimates and have not yet been through a full analysis.</div>
           <div v-if="gTerminalDiverges" class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
             <strong>⚠️ Divergent terminal:</strong> Terminal growth ({{ (TICKER_CONFIG.GOOGL.terminal.growth * 100).toFixed(1) }}%) exceeds discount rate ({{ gD }}%), so terminal value grows with each additional year. Terminal value represents ~{{ (gTerminalPercent * 100).toFixed(0) }}% of intrinsic floor.
           </div>
@@ -3125,7 +3129,9 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">EPS</span><span class="gterm-def">Earnings per share &mdash; net profit divided by shares outstanding.</span></div>
           <div class="gterm"><span class="gterm-name">Forward EPS</span><span class="gterm-def">Analyst consensus estimate of EPS over the next 12 months.</span></div>
           <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. GOOGL's range is more stable than NVDA's (20&ndash;35&times; for most of the post-2017 period).</span></div>
-          <div class="gterm"><span class="gterm-name">Two-phase DCF</span><span class="gterm-def">A discounted cash flow model split into a high-growth phase (yr 1&ndash;5 at g5) and a deceleration phase (yr 6&ndash;10 at h5).</span></div>
+          <div class="gterm"><span class="gterm-name">Staged DCF</span><span class="gterm-def">A discounted cash flow model with two staged growth phases (20% for 5 years, then 12% for 5 years), discounted at rate d, with an Rx-derived terminal value rather than a fixed exit multiple.</span></div>
+          <div class="gterm"><span class="gterm-name">Discount rate d</span><span class="gterm-def">Fixed at {{ gD }}% as a read-only override &mdash; GOOGL has no CAPM inputs yet because no beta has been derived for it.</span></div>
+          <div class="gterm"><span class="gterm-name">TTM P/E</span><span class="gterm-def">Price divided by trailing-twelve-month EPS (excluding unrealized equity-stake gains) &mdash; the live &ldquo;Current&rdquo; point on the historical chart.</span></div>
           <div class="gterm"><span class="gterm-name">Fiscal year end</span><span class="gterm-def">December 31 &mdash; unlike NVDA (late January), GOOGL's fiscal year aligns with the calendar year. No offset needed between EPS period and stock return period.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum GOOGL should be worth based on future EPS discounted to today's dollars. A margin-of-safety check, not a price target.</span></div>
         </div>
@@ -3161,7 +3167,7 @@ watch(watchlist, () => {
             </tr>
           </tbody>
         </table>
-        <p class="note">Basis prices loaded from spreadsheet. vs basis shows total gain/loss since original purchase price.</p>
+        <p class="note">Basis prices are original purchase costs. vs basis shows total gain/loss since purchase.</p>
       </div>
 
     </main>
