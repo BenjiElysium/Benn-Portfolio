@@ -293,16 +293,16 @@ const nD = computed({
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
 })
 const nCapmRf = computed({
-  get: () => (nvdaState.capm?.rf ?? TICKER_CONFIG.NVDA.capm.rf) * 100,
-  set: (v) => { nvdaState.capm.rf = v / 100 }
+  get: () => +((nvdaState.capm?.rf ?? TICKER_CONFIG.NVDA.capm.rf) * 100).toFixed(2),
+  set: (v) => { if (Number.isFinite(v) && nvdaState.capm) nvdaState.capm.rf = v / 100 }
 })
 const nCapmErp = computed({
-  get: () => (nvdaState.capm?.erp ?? TICKER_CONFIG.NVDA.capm.erp) * 100,
-  set: (v) => { nvdaState.capm.erp = v / 100 }
+  get: () => +((nvdaState.capm?.erp ?? TICKER_CONFIG.NVDA.capm.erp) * 100).toFixed(2),
+  set: (v) => { if (Number.isFinite(v) && nvdaState.capm) nvdaState.capm.erp = v / 100 }
 })
 const nCapmBeta = computed({
   get: () => nvdaState.capm?.beta ?? TICKER_CONFIG.NVDA.capm.beta,
-  set: (v) => { nvdaState.capm.beta = v }
+  set: (v) => { if (Number.isFinite(v) && nvdaState.capm) nvdaState.capm.beta = v }
 })
 const nBaseEPS = computed({
   get: () => nvdaState.baseValue ?? TICKER_CONFIG.NVDA.baseValue,
@@ -355,16 +355,16 @@ const bD = computed({
   set: (v) => { /* read-only; discount rate is CAPM-derived */ }
 })
 const bCapmRf = computed({
-  get: () => (bxState.capm?.rf ?? TICKER_CONFIG.BX.capm.rf) * 100,
-  set: (v) => { bxState.capm.rf = v / 100 }
+  get: () => +((bxState.capm?.rf ?? TICKER_CONFIG.BX.capm.rf) * 100).toFixed(2),
+  set: (v) => { if (Number.isFinite(v) && bxState.capm) bxState.capm.rf = v / 100 }
 })
 const bCapmErp = computed({
-  get: () => (bxState.capm?.erp ?? TICKER_CONFIG.BX.capm.erp) * 100,
-  set: (v) => { bxState.capm.erp = v / 100 }
+  get: () => +((bxState.capm?.erp ?? TICKER_CONFIG.BX.capm.erp) * 100).toFixed(2),
+  set: (v) => { if (Number.isFinite(v) && bxState.capm) bxState.capm.erp = v / 100 }
 })
 const bCapmBeta = computed({
   get: () => bxState.capm?.beta ?? TICKER_CONFIG.BX.capm.beta,
-  set: (v) => { bxState.capm.beta = v }
+  set: (v) => { if (Number.isFinite(v) && bxState.capm) bxState.capm.beta = v }
 })
 
 // GOOGL computed refs
@@ -615,6 +615,44 @@ const nFloor = computed(() => nDcfFull.value.intrinsic)
 const nTerminalDiverges = computed(() => nDcfFull.value.terminalDiverges)
 const nTerminalPercent = computed(() => nDcfFull.value.terminalAsPercentOfIntrinsic)
 
+// ─── Staged-growth editor + value path (model inputs UI) ────────────────────
+const nGrowthStages = computed(() => nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages)
+const nSeedValues = computed(() => nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues ?? [])
+const nTerminal = computed(() => nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal)
+
+function nAddGrowthStage() {
+  if (nvdaState.growthStages) nvdaState.growthStages.push({ years: 1, rate: 0.10 })
+}
+function nRemoveGrowthStage(i) {
+  if (nvdaState.growthStages && nvdaState.growthStages.length > 1) nvdaState.growthStages.splice(i, 1)
+}
+function nSetStageYears(stage, v) {
+  const y = Math.round(+v)
+  if (Number.isFinite(y) && y >= 1 && y <= 20) stage.years = y
+}
+function nSetStageRate(stage, v) {
+  const r = +v
+  if (Number.isFinite(r)) stage.rate = r / 100
+}
+function nSetTerminalGrowth(v) {
+  const g = +v
+  if (Number.isFinite(g) && nvdaState.terminal) nvdaState.terminal.growth = g / 100
+}
+function nSetTerminalYears(v) {
+  const y = Math.round(+v)
+  if (Number.isFinite(y) && y >= 1 && y <= 50 && nvdaState.terminal) nvdaState.terminal.years = y
+}
+
+// Value path rows: seed years are consensus INPUTS, the rest are model output.
+const nValuePath = computed(() => {
+  const seedCount = nSeedValues.value?.length ?? 0
+  return nDcfFull.value.valuePath.map((v, i) => ({
+    year: i + 1,
+    value: v,
+    consensus: i < seedCount,
+  }))
+})
+
 // Keep old breakdown for backward compatibility (will be replaced by nDcfFull)
 const nDcfBreakdown = computed(() => {
   const full = nDcfFull.value
@@ -724,12 +762,16 @@ const nActiveScenario = computed(() => {
   const stateStages = nvdaState.growthStages ?? TICKER_CONFIG.NVDA.growthStages
   const stateTerminal = nvdaState.terminal ?? TICKER_CONFIG.NVDA.terminal
   const stateMultiple = nvdaState.multipleBand ?? TICKER_CONFIG.NVDA.multipleBand
+  // Scenarios don't define CAPM — dirty means the store's capm differs from
+  // the ticker default (applyScenario resets it there).
+  const stateCapm = nvdaState.capm ?? TICKER_CONFIG.NVDA.capm
 
   const isDirty = !(
     JSON.stringify(stateSeeds) === JSON.stringify(scenario.seedValues) &&
     JSON.stringify(stateStages) === JSON.stringify(scenario.growthStages) &&
     JSON.stringify(stateTerminal) === JSON.stringify(scenario.terminal) &&
-    JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand)
+    JSON.stringify(stateMultiple) === JSON.stringify(scenario.multipleBand) &&
+    JSON.stringify(stateCapm) === JSON.stringify(TICKER_CONFIG.NVDA.capm)
   )
 
   return { active, isDirty }
@@ -1355,45 +1397,41 @@ function renderNVDADcfChart() {
   if (!el) return
   safeDestroyChart(nDcfChart); nDcfChart = null
 
+  // Draw the ACTUAL staged path from the engine: base at Yr 0, consensus seed
+  // years, then growth-derived years — no synthetic two-phase approximation.
+  const full = nDcfFull.value
   const base = nBaseEPS.value
-  const g5 = nG5.value / 100
-  const h5 = nH5.value / 100
-  const d  = nD.value  / 100
-
-  const years = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  const epsAt = yr => {
-    if (yr <= 5) return base * Math.pow(1 + g5, yr)
-    return base * Math.pow(1 + g5, 5) * Math.pow(1 + h5, yr - 5)
-  }
-
-  const phase1 = years.map(yr => yr <= 5 ? +epsAt(yr).toFixed(2) : null)
-  const phase2 = years.map(yr => yr >= 5 ? +epsAt(yr).toFixed(2) : null)
-  const pvLine = years.map(yr => +(epsAt(yr) / Math.pow(1 + d, yr)).toFixed(2))
+  const seedCount = (nvdaState.seedValues ?? TICKER_CONFIG.NVDA.seedValues ?? []).length
+  const eps = [base, ...full.valuePath]
+  const N = eps.length
+  const seedSeg = eps.map((v, i) => i <= seedCount ? +v.toFixed(2) : null)
+  const derivedSeg = eps.map((v, i) => i >= seedCount ? +v.toFixed(2) : null)
+  const pvLine = [+base.toFixed(2), ...full.pvPath.map(v => +v.toFixed(2))]
   const g = gc()
 
   try {
     nDcfChart = new ChartJS(el, {
       type: 'line',
       data: {
-        labels: years.map(yr => `Yr ${yr}`),
+        labels: eps.map((_, i) => `Yr ${i}`),
         datasets: [
           {
-            label: 'Phase 1 EPS (g5)',
-            data: phase1,
+            label: 'Consensus EPS (seed)',
+            data: seedSeg,
             borderColor: '#378ADD',
             backgroundColor: 'transparent',
-            pointRadius: years.map(yr => (yr === 0 || yr === 5) ? 5 : 3),
+            pointRadius: eps.map((_, i) => (i === 0 || i === seedCount) ? 5 : 3),
             pointBackgroundColor: '#378ADD',
             borderWidth: 2.5,
             tension: 0.2,
             spanGaps: false,
           },
           {
-            label: 'Phase 2 EPS (h5)',
-            data: phase2,
+            label: 'Derived EPS (staged growth)',
+            data: derivedSeg,
             borderColor: '#1D9E75',
             backgroundColor: 'transparent',
-            pointRadius: years.map(yr => (yr === 5 || yr === 10) ? 5 : 3),
+            pointRadius: eps.map((_, i) => (i === seedCount || i === N - 1) ? 5 : 3),
             pointBackgroundColor: '#1D9E75',
             borderWidth: 2.5,
             tension: 0.2,
@@ -2084,7 +2122,7 @@ watch([nR1, nR2, nR3, nR4], () => {
   if (activeTab.value === 'nvda') renderNVDARevChart()
 })
 // NVDA DCF chart
-watch([nBaseEPS, nG5, nH5, nD], () => {
+watch(nDcfFull, () => {
   if (activeTab.value !== 'nvda') return
   renderNVDADcfChart()
   renderNVDAEpsGainChart()
@@ -2475,11 +2513,73 @@ watch(watchlist, () => {
               ⚠️ Exceeds sanity ceiling ($1.5T)
             </span>
           </div>
+
+          <!-- ── Model inputs ─────────────────────────────────────── -->
+          <div class="section-label">Model inputs</div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+
+            <!-- Base value -->
+            <div class="mi-block">
+              <div class="mi-title">Base value</div>
+              <div class="mi-value">${{ nBaseEPS.toFixed(2) }}</div>
+              <div class="mi-note">{{ TICKER_CONFIG.NVDA.baseValueLabel }}</div>
+              <div class="mi-note">Seed years override the base in the staged path.</div>
+            </div>
+
+            <!-- CAPM -->
+            <div class="mi-block">
+              <div class="mi-title">CAPM discount rate</div>
+              <div class="mi-row"><label>Risk-free rf</label><input type="number" step="0.01" min="0" max="10" v-model.number="nCapmRf" class="mi-input" /><span>%</span></div>
+              <div class="mi-row"><label>Equity risk premium</label><input type="number" step="0.1" min="0" max="12" v-model.number="nCapmErp" class="mi-input" /><span>%</span></div>
+              <div class="mi-row"><label>Beta</label><input type="number" step="0.01" min="0" max="4" v-model.number="nCapmBeta" class="mi-input" /><span>&nbsp;</span></div>
+              <div class="mi-note">d = rf + beta &times; erp = <strong>{{ nD }}%</strong></div>
+            </div>
+
+            <!-- Terminal -->
+            <div class="mi-block">
+              <div class="mi-title">Terminal value</div>
+              <div class="mi-row"><label>Terminal growth</label><input type="number" step="0.5" min="0" max="30" :value="+(nTerminal.growth * 100).toFixed(1)" @change="e => nSetTerminalGrowth(e.target.value)" class="mi-input" /><span>%</span></div>
+              <div class="mi-row"><label>Terminal years</label><input type="number" step="1" min="1" max="50" :value="nTerminal.years" @change="e => nSetTerminalYears(e.target.value)" class="mi-input" /><span>&nbsp;</span></div>
+              <div class="mi-note">Rx {{ nDcfBreakdown.Rx.toFixed(5) }} &middot; derived multiple {{ nDcfBreakdown.mult.toFixed(3) }} &middot; terminal {{ (nTerminalPercent * 100).toFixed(0) }}% of intrinsic</div>
+              <div v-if="nTerminalDiverges" class="mi-note mi-warn">⚠️ Terminal growth ≥ discount rate — terminal value grows with each added year. Confirm this is intended.</div>
+            </div>
+          </div>
+
+          <!-- ── Staged growth editor ─────────────────────────────── -->
+          <div class="mi-block mb-3">
+            <div class="mi-title">Growth stages <span class="mi-note" style="display:inline">(applied after {{ nSeedValues.length }} consensus seed year{{ nSeedValues.length === 1 ? '' : 's' }})</span></div>
+            <div v-for="(stage, i) in nGrowthStages" :key="i" class="mi-row stage-row">
+              <label>Stage {{ i + 1 }}</label>
+              <input type="number" step="1" min="1" max="20" :value="stage.years" @change="e => nSetStageYears(stage, e.target.value)" class="mi-input" /><span>yr at</span>
+              <input type="number" step="0.5" :value="+(stage.rate * 100).toFixed(1)" @change="e => nSetStageRate(stage, e.target.value)" class="mi-input" /><span>%</span>
+              <button type="button" class="stage-btn" :disabled="nGrowthStages.length <= 1" @click="nRemoveGrowthStage(i)" aria-label="Remove stage">&minus;</button>
+            </div>
+            <button type="button" class="stage-btn stage-add" @click="nAddGrowthStage()">+ add stage</button>
+          </div>
+
+          <!-- ── Value path table (seed vs derived) ───────────────── -->
+          <div class="mi-block mb-3" style="overflow-x: auto;">
+            <div class="mi-title">Value path</div>
+            <table class="vp-table">
+              <thead>
+                <tr><th>Year</th><th style="text-align:right">EPS</th><th>Source</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in nValuePath" :key="row.year">
+                  <td>Yr {{ row.year }}</td>
+                  <td style="text-align:right">${{ row.value.toFixed(2) }}</td>
+                  <td><span class="vp-tag" :class="row.consensus ? 'vp-seed' : 'vp-derived'">{{ row.consensus ? 'consensus' : 'derived' }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="mi-note">Consensus rows are analyst inputs, not model output; derived rows come from the staged growth rates above.</p>
+          </div>
+
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
               <div class="tprice">{{ dlr(nFloor) }}</div>
-              <div class="tret">g5 {{ nG5 }}% &rarr; h5 {{ nH5 }}% &rarr; d {{ nD }}%</div>
+              <div class="tret">{{ nGrowthStages.map(s => `${s.years}y@${(s.rate * 100).toFixed(0)}%`).join(' → ') }} → d {{ nD }}%</div>
             </div>
             <div class="tcard">
               <div class="tlabel">Price vs floor</div>
@@ -2487,20 +2587,20 @@ watch(watchlist, () => {
               <div class="tret">{{ nVsFloor >= 0 ? 'Stock below DCF floor' : 'Stock above DCF floor' }}</div>
             </div>
             <div class="tcard">
-              <div class="tlabel">Yr-5 EPS (g5)</div>
+              <div class="tlabel">Yr-5 EPS</div>
               <div class="tprice">{{ dlr(nDcfBreakdown.yr5EPS) }}</div>
               <div class="tret">from ${{ nBaseEPS.toFixed(2) }} base</div>
             </div>
             <div class="tcard">
-              <div class="tlabel">Yr-10 EPS (h5)</div>
+              <div class="tlabel">Yr-10 EPS</div>
               <div class="tprice">{{ dlr(nDcfBreakdown.yr10EPS) }}</div>
-              <div class="tret">terminal &times; 10</div>
+              <div class="tret">final staged year</div>
             </div>
           </div>
           <div class="chart-wrap"><canvas ref="nDcfCanvas" /></div>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Phase 1 EPS &mdash; g5 (yr 0&ndash;5)</span>
-            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Phase 2 EPS &mdash; h5 (yr 5&ndash;10)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#378ADD" />Consensus EPS (seed years)</span>
+            <span class="legend-item"><span class="legend-line" style="background:#1D9E75" />Derived EPS (staged growth)</span>
             <span class="legend-item"><span class="legend-dash" style="border-color:#f59e0b" />PV at d% (filled below)</span>
           </div>
           <p class="note">The amber fill shows each year&apos;s EPS discounted to present value at rate d. The gap between the EPS line and the fill widens with higher d &mdash; that compression is what sets the intrinsic floor.</p>
@@ -2708,6 +2808,16 @@ watch(watchlist, () => {
           <div class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
             <strong>⚠️ Divergent terminal:</strong> Terminal value represents ~{{ (bTerminalPercent * 100).toFixed(0) }}% of intrinsic floor. The 20-year terminal count is a material assumption; adjust it to stress-test the floor.
           </div>
+
+          <!-- CAPM inputs -->
+          <div class="mi-block mb-3">
+            <div class="mi-title">CAPM discount rate</div>
+            <div class="mi-row"><label>Risk-free rf</label><input type="number" step="0.01" min="0" max="10" v-model.number="bCapmRf" class="mi-input" /><span>%</span></div>
+            <div class="mi-row"><label>Equity risk premium</label><input type="number" step="0.1" min="0" max="12" v-model.number="bCapmErp" class="mi-input" /><span>%</span></div>
+            <div class="mi-row"><label>Beta</label><input type="number" step="0.01" min="0" max="4" v-model.number="bCapmBeta" class="mi-input" /><span>&nbsp;</span></div>
+            <div class="mi-note">d = rf + beta &times; erp = <strong>{{ bD }}%</strong> — recomputes the floor live.</div>
+          </div>
+
           <div class="targets">
             <div class="tcard"><div class="tlabel">Intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div><div class="tret">DpS discounted to today</div></div>
             <div class="tcard"><div class="tlabel">Price vs floor</div><div class="tprice" :class="colCls(bVsFloor)">{{ pct(bVsFloor) }}</div><div class="tret">{{ bVsFloor >= 0 ? 'Appears undervalued vs floor' : 'Trades above DCF floor' }}</div></div>
@@ -2911,6 +3021,7 @@ watch(watchlist, () => {
         <div class="card">
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
           <div class="insight">This is a present-value estimate, not a price target. It grows EPS in two stages (20% for 5 years, then 12% for 5 years), discounts those future dollars back at {{ gD }}%, and derives terminal value using the Rx formula (not a fixed multiple).</div>
+          <div class="insight">Discount rate: <strong>{{ gD }}% — fixed override, read-only.</strong> No CAPM source analysis exists for GOOGL; a beta must be derived before switching to CAPM inputs (see config TODO).</div>
           <div class="insight">⚠️ <strong>Economics changed from the previous fixed-10x method.</strong> Floor shifted from $341.65 to {{ dlr(gFloor) }} (+5.7%) due to the terminal method. Terminal value is now derived from the Rx formula rather than hardcoded. Growth inputs remain unreconciled to a source analysis.</div>
           <div v-if="gTerminalDiverges" class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
             <strong>⚠️ Divergent terminal:</strong> Terminal growth ({{ (TICKER_CONFIG.GOOGL.terminal.growth * 100).toFixed(1) }}%) exceeds discount rate ({{ gD }}%), so terminal value grows with each additional year. Terminal value represents ~{{ (gTerminalPercent * 100).toFixed(0) }}% of intrinsic floor.
@@ -3292,6 +3403,51 @@ tr:hover td { background: var(--c-bg2); }
   font-style: italic;
   font-size: 15px;
 }
+
+/* ── Model inputs (staged DCF editor) ────────────────────────── */
+.mi-block {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.mi-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a1a1aa; margin-bottom: 8px; }
+.mi-value { font-size: 20px; font-weight: 500; color: var(--c-text); }
+.mi-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 13px; }
+.mi-row label { flex: 1; color: #a1a1aa; }
+.mi-input {
+  width: 72px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  color: var(--c-text);
+  font-size: 13px;
+  padding: 3px 7px;
+  text-align: right;
+}
+.mi-input:focus { outline: none; border-color: rgb(59,130,246); }
+.mi-note { font-size: 12px; color: #71717a; margin-top: 6px; line-height: 1.45; }
+.mi-warn { color: var(--c-amber); }
+.stage-row label { flex: 0 0 64px; }
+.stage-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  color: var(--c-text);
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.stage-btn:hover:not(:disabled) { border-color: rgb(59,130,246); }
+.stage-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.stage-add { margin-top: 4px; font-size: 12px; }
+.vp-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.vp-table th { text-align: left; color: #a1a1aa; font-weight: 500; padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.vp-table td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.vp-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px; padding: 1px 6px; }
+.vp-seed { background: rgba(55,138,221,0.15); color: #7cb8ec; }
+.vp-derived { background: rgba(29,158,117,0.15); color: #4ecca3; }
 
 .conviction-divergence {
   margin-top: 6px;

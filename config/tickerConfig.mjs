@@ -295,12 +295,6 @@ export const GOOGL_CONFIG = {
         ],
       },
       {
-        section: 'Staged DCF (Advanced)',
-        items: [
-          { key: 'discountRate', label: 'Discount rate d', min: 5, max: 15, step: 0.1, fmt: 'percent' },
-        ],
-      },
-      {
         section: 'FY2026 Revenue Model',
         items: [
           { key: 'revQ1', label: 'Q1 Jan–Mar 2026 ($B)', min: 60, max: 150, step: 0.5, fmt: 'billion' },
@@ -388,6 +382,12 @@ export function applyScenario(reactiveStore, scenarioKey, tickerConfig) {
   if (scenario.terminal !== undefined) {
     reactiveStore.terminal = JSON.parse(JSON.stringify(scenario.terminal))
   }
+  // Scenarios don't define CAPM — applying one resets CAPM to the ticker
+  // default so the dirty-state (which includes capm) clears on reset.
+  if (tickerConfig.capm != null) {
+    reactiveStore.capm = JSON.parse(JSON.stringify(tickerConfig.capm))
+  }
+
   if (scenario.multipleBand !== undefined) {
     reactiveStore.multipleBand = JSON.parse(JSON.stringify(scenario.multipleBand))
   }
