@@ -8,6 +8,8 @@ import {
   getVerdict,
 } from '~/composables/useStockValuation.js'
 import { TICKER_CONFIG, cloneConfigForReactive, resetConfigToDefaults, applyScenario, isStale, mostRecentAsOf, daysSince } from '~/config/tickerConfig.mjs'
+import { DEFAULT_WATCHLIST } from '~/config/watchlist.mjs'
+import { groupWatchlist, nameOf, compactFromMillions, rangePosition, usd } from '~/composables/useWatchlist.js'
 
 // ─── Chart.js (dynamic import — SSR-safe) ─────────────────────
 let ChartJS = null
@@ -23,6 +25,8 @@ const activeTab = ref('nvda')
 
 const prices = reactive({})
 const prevPrices = reactive({})
+const dayRanges = reactive({})   // ticker → { o, h, l } from the latest quote
+const refStats = reactive({})    // ticker → { mcap, avgVol, hi52, lo52 } (daily)
 
 // ─── Price resolution state ───────────────────────────────────
 // ticker → 'pending' | 'resolved' | 'error'. Verdicts, live multiples, and
@@ -59,7 +63,11 @@ const staleness = computed(() => {
 const statusText = ref('Fetching prices...')
 const livePaused = ref(false)
 const POLL_INTERVAL_MS = 30_000
+// The watchlist is ~40 symbols, one Finnhub call each against a 60/min
+// budget, so it refreshes every other tick and only while its tab is open.
+const WATCHLIST_EVERY_TICKS = 2
 let pollTimer = null
+let pollTick = 0
 
 // ─── Per-ticker reactive stores (cloned from config on mount) ───
 const nvdaState = reactive({})
@@ -86,14 +94,6 @@ function applyNVDAScenario(scenarioKey) {
   // The conviction ladder is rebuilt from the new band — a prior signal from
   // the old band must not pin the verdict through hysteresis.
   nConvictionPrior.value = null
-}
-
-// ─── Cost bases ───────────────────────────────────────────────
-const BASES = {
-  BX: 154.14, GOOGL: 313, NVDA: 186.5, IGM: 129.16, PRME: 3.47,
-  APO: 144.76, AAPL: 271.86, AKRE: 65.51, ALNY: 397.65, AMZN: 230.82,
-  ARES: 161.63, ARKG: 28.97, BEAM: 27.72, CG: 59.11, CRWV: 71.61,
-  CRSP: 52.44, CRWD: 468.76,
 }
 
 // ─── NVDA Historical P/E seed ─────────────────────────────────
@@ -527,10 +527,9 @@ const currentSliders = computed(() => {
 })
 
 // ─── Watchlist ────────────────────────────────────────────────
-const WATCHLIST_KEY = 'sa-stock-watchlist-v1'
-const DEFAULT_WATCHLIST = Object.freeze([
-  'NVDA', 'BX', 'AAPL', 'AMZN', 'GOOGL', 'CRWD', 'APO', 'ARES', 'ARKG', 'PRME', 'ALNY',
-])
+// v2: the default list was replaced — a v1 list saved in a visitor's browser
+// would otherwise hide it.
+const WATCHLIST_KEY = 'sa-stock-watchlist-v2'
 
 function normalizeWatchlist(raw) {
   if (!Array.isArray(raw)) return []
@@ -553,6 +552,8 @@ if (import.meta.client) {
   } catch { /* ignore */ }
 }
 const newTicker = ref('')
+const watchlistIsDefault = computed(() =>
+  watchlist.value.length === DEFAULT_WATCHLIST.length && watchlist.value.every((t, i) => t === DEFAULT_WATCHLIST[i]))
 
 // ─── Canvas refs ──────────────────────────────────────────────
 const nProjCanvas    = ref(null)
@@ -1168,13 +1169,19 @@ const gConviction = computed(() => {
 watch(gConviction, v => { if (v?.signal) gConvictionPrior.value = v.signal })
 
 // ─── Watchlist ────────────────────────────────────────────────
-const watchlistRows = computed(() =>
-  watchlist.value.map(t => {
+const watchlistGroups = computed(() =>
+  groupWatchlist(watchlist.value.map(t => {
     const p = prices[t] || 0, pp = prevPrices[t] || p
     const c = p - pp, pc = p > 0 ? c / pp : 0
-    const basis = BASES[t], bp = basis && p > 0 ? (p - basis) / basis : null
-    return { ticker: t, price: p, change: c, changePct: pc, vsBasis: bp, basis }
-  })
+    const day = dayRanges[t] ?? {}, st = refStats[t] ?? {}
+    return {
+      ticker: t, name: nameOf(t), price: p, change: c, changePct: pc,
+      open: day.o ?? null, high: day.h ?? null, low: day.l ?? null,
+      mcap: compactFromMillions(st.mcap), avgVol: compactFromMillions(st.avgVol),
+      lo52: st.lo52 ?? null, hi52: st.hi52 ?? null,
+      pos52: rangePosition(p, st.lo52, st.hi52),
+    }
+  }))
 )
 
 // ─── Chart helpers ────────────────────────────────────────────
@@ -1967,10 +1974,10 @@ function renderGOOGLCharts() {
 }
 
 // ─── Finnhub via server routes (no key on client) ────────────
-const allTickers = computed(() => {
-  const extras = watchlist.value.filter(t => t !== 'NVDA' && t !== 'BX' && t !== 'GOOGL')
-  return ['NVDA', 'BX', 'GOOGL', ...extras]
-})
+const CORE_TICKERS = ['NVDA', 'BX', 'GOOGL']
+const watchlistExtras = computed(() => watchlist.value.filter(t => !CORE_TICKERS.includes(t)))
+const allTickers = computed(() =>
+  activeTab.value === 'watchlist' ? [...CORE_TICKERS, ...watchlistExtras.value] : CORE_TICKERS)
 
 async function fetchQuotes(tickers) {
   if (!tickers.length) return
@@ -1981,6 +1988,7 @@ async function fetchQuotes(tickers) {
       if (q && Number.isFinite(q.c) && q.c > 0) {
         prices[ticker]      = q.c
         prevPrices[ticker]  = q.pc
+        dayRanges[ticker]   = { o: q.o ?? null, h: q.h ?? null, l: q.l ?? null }
         priceStates[ticker] = 'resolved'
       } else if (priceStates[ticker] !== 'resolved') {
         priceStates[ticker] = 'error'
@@ -1993,6 +2001,27 @@ async function fetchQuotes(tickers) {
   }
 }
 
+// Daily reference stats (market cap, avg volume, 52-wk range). A rate-limited
+// first load returns some symbols as `pending`; those are retried a minute later.
+let statsRetryTimer = null
+async function fetchStats(tickers, attempt = 0) {
+  const missing = tickers.filter(t => !refStats[t])
+  if (!missing.length) return
+  try {
+    const { stats, pending } = await $fetch(`/api/finnhub/stats?symbols=${missing.join(',')}`)
+    Object.assign(refStats, stats)
+    if (pending?.length && attempt < 3) {
+      clearTimeout(statsRetryTimer)
+      statsRetryTimer = setTimeout(() => fetchStats(pending, attempt + 1), 65_000)
+    }
+  } catch { /* stats are optional — cells show a dash */ }
+}
+
+async function refreshWatchlist() {
+  await fetchQuotes(allTickers.value)
+  fetchStats(watchlist.value)
+}
+
 // NOTE: the historical P/E series are canonical (see *_PE_CANONICAL) and are
 // never overwritten by Finnhub — the API contributes only the live price,
 // from which the current-quarter P/E point is derived.
@@ -2000,16 +2029,19 @@ async function fetchQuotes(tickers) {
 // ─── Polling (replaces WebSocket — API key stays server-only) ─
 function startPolling() {
   stopPolling()
+  pollTick = 0
   pollTimer = setInterval(async () => {
-    if (!livePaused.value) {
-      await fetchQuotes(allTickers.value)
-      statusText.value = 'Live (30s)'
-    }
+    if (livePaused.value) return
+    pollTick++
+    const withList = activeTab.value === 'watchlist' && pollTick % WATCHLIST_EVERY_TICKS === 0
+    await fetchQuotes(withList ? allTickers.value : CORE_TICKERS)
+    statusText.value = 'Live (30s)'
   }, POLL_INTERVAL_MS)
 }
 
 function stopPolling() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  clearTimeout(statsRetryTimer)
 }
 
 async function toggleLiveStream() {
@@ -2033,10 +2065,16 @@ async function addTicker() {
   watchlist.value.push(t)
   newTicker.value = ''
   await fetchQuotes([t])
+  fetchStats([t])
 }
 
 function removeTicker(t) {
   watchlist.value = watchlist.value.filter(x => x !== t)
+}
+
+function resetWatchlist() {
+  watchlist.value = [...DEFAULT_WATCHLIST]
+  refreshWatchlist()
 }
 
 // ─── Throttle for price-driven chart redraws ──────────────────
@@ -2168,6 +2206,14 @@ watch([gBaseEPS, gG5, gH5, gD], () => {
   renderGOOGLEpsGainChart()
 })
 // Tab switch — render newly visible charts
+// Opening the watchlist pulls its quotes + stats straight away rather than
+// waiting for the next poll.
+let watchlistFetchedAt = 0
+watch(activeTab, (tab) => {
+  if (tab !== 'watchlist' || livePaused.value || Date.now() - watchlistFetchedAt < POLL_INTERVAL_MS) return
+  watchlistFetchedAt = Date.now()
+  refreshWatchlist()
+})
 watch(activeTab, (tab) => {
   if (tab === 'nvda')  renderNVDACharts()
   if (tab === 'bx')    renderBXCharts()
@@ -3143,31 +3189,58 @@ watch(watchlist, () => {
           <input type="text" v-model="newTicker" placeholder="Add ticker (e.g. MSFT)" @keydown.enter="addTicker" />
           <button @click="addTicker">Add</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:13%">Ticker</th>
-              <th style="width:15%">Price</th>
-              <th style="width:15%">Day chg</th>
-              <th style="width:12%">Day %</th>
-              <th style="width:18%">vs basis</th>
-              <th style="width:18%">Basis</th>
-              <th style="width:9%" />
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in watchlistRows" :key="row.ticker">
-              <td><span class="badge">{{ row.ticker }}</span></td>
-              <td style="font-weight:500">{{ row.price > 0 ? dlr(row.price) : '\u2014' }}</td>
-              <td :class="colCls(row.change)">{{ row.price > 0 ? absDlr(row.change) : '\u2014' }}</td>
-              <td :class="colCls(row.changePct)">{{ row.price > 0 ? pct(row.changePct) : '\u2014' }}</td>
-              <td :class="row.vsBasis !== null ? colCls(row.vsBasis) : ''">{{ row.vsBasis !== null ? pct(row.vsBasis) : '\u2014' }}</td>
-              <td class="basis-cell">{{ row.basis ? dlr(row.basis) : '\u2014' }}</td>
-              <td><button class="remove-btn" @click="removeTicker(row.ticker)">&times;</button></td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="note">Basis prices are original purchase costs. vs basis shows total gain/loss since purchase.</p>
+        <div class="wl-scroll">
+          <table class="wl-table">
+            <thead>
+              <tr>
+                <th style="width:19%">Ticker</th>
+                <th class="num" style="width:9%">Price</th>
+                <th class="num" style="width:8%">Day chg</th>
+                <th class="num" style="width:7%">Day %</th>
+                <th class="num" style="width:8%">Open</th>
+                <th class="num" style="width:8%">High</th>
+                <th class="num" style="width:8%">Low</th>
+                <th class="num" style="width:8%">Mkt cap</th>
+                <th class="num" style="width:8%" title="Average daily volume, last 3 months">Avg vol</th>
+                <th class="num" style="width:12%" title="Where today's price sits between the 52-week low and high">52-wk range</th>
+                <th style="width:5%"><span class="sr-only">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody v-for="g in watchlistGroups" :key="g.key">
+              <tr class="wl-group">
+                <th colspan="11" scope="rowgroup">{{ g.label }} <span class="wl-group-count">{{ g.rows.length }}</span></th>
+              </tr>
+              <tr v-for="row in g.rows" :key="row.ticker" class="wl-row">
+                <td>
+                  <span class="badge">{{ row.ticker }}</span>
+                  <span v-if="row.name" class="wl-name" :title="row.name">{{ row.name }}</span>
+                </td>
+                <td class="num" style="font-weight:500">{{ row.price > 0 ? usd(row.price) : '\u2014' }}</td>
+                <td class="num" :class="row.price > 0 ? colCls(row.change) : ''">{{ row.price > 0 ? absDlr(row.change) : '\u2014' }}</td>
+                <td class="num" :class="row.price > 0 ? colCls(row.changePct) : ''">{{ row.price > 0 ? pct(row.changePct, 2) : '\u2014' }}</td>
+                <td class="num wl-dim">{{ row.open ? usd(row.open) : '\u2014' }}</td>
+                <td class="num wl-dim">{{ row.high ? usd(row.high) : '\u2014' }}</td>
+                <td class="num wl-dim">{{ row.low ? usd(row.low) : '\u2014' }}</td>
+                <td class="num wl-dim">{{ row.mcap ?? '\u2014' }}</td>
+                <td class="num wl-dim">{{ row.avgVol ?? '\u2014' }}</td>
+                <td class="num">
+                  <span v-if="row.pos52 !== null" class="wl-range" role="img"
+                    :title="`52-wk low ${usd(row.lo52)} · high ${usd(row.hi52)}`"
+                    :aria-label="`52-week range ${usd(row.lo52)} to ${usd(row.hi52)}; now ${Math.round(row.pos52 * 100)}% of the way up`">
+                    <span class="wl-range-dot" :style="{ left: `${row.pos52 * 100}%` }" />
+                  </span>
+                  <span v-else class="wl-dim">&mdash;</span>
+                </td>
+                <td><button class="remove-btn" :aria-label="`Remove ${row.ticker}`" @click="removeTicker(row.ticker)">&times;</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Quotes from Finnhub, refreshed every minute on this tab. Market cap, average volume and the 52-week range update daily;
+          a dash means Finnhub doesn't publish that figure (ETFs have no market cap) or doesn't report it in US dollars for that listing.
+          <button v-if="!watchlistIsDefault" type="button" class="wl-reset" @click="resetWatchlist">Reset to the default list</button>
+        </p>
       </div>
 
     </main>
@@ -3287,7 +3360,23 @@ th { text-align: left; font-size: 11px; font-weight: 500; color: var(--c-text2);
 td { padding: 9px 8px; border-bottom: 0.5px solid var(--c-border); color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--c-bg2); }
-.basis-cell { color: var(--c-text2); font-size: 12px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ─── Watchlist ──────────────────────────────────────────────── */
+.wl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.wl-table { min-width: 960px; }
+.wl-table thead th:first-child,
+.wl-table .wl-row td:first-child { position: sticky; left: 0; z-index: 1; background: var(--c-bg); }
+.wl-table .wl-row:hover td:first-child { background: var(--c-bg2); }
+.wl-group th { padding: 18px 8px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--c-text); border-bottom: 1px solid var(--c-border2); text-align: left; }
+.wl-group:hover th { background: transparent; }
+.wl-group-count { margin-left: 6px; font-weight: 500; color: var(--c-text3); }
+.wl-name { display: block; margin-top: 3px; font-size: 11px; color: var(--c-text3); overflow: hidden; text-overflow: ellipsis; }
+.wl-dim { color: var(--c-text2); }
+.wl-range { position: relative; display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: #3f3f46; vertical-align: middle; }
+.wl-range-dot { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%; background: #e4e4e7; border: 2px solid var(--c-bg); transform: translate(-50%, -50%); }
+.wl-reset { margin-left: 4px; color: var(--c-text); text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
+.wl-reset:hover { color: #fff; }
 
 /* ─── Misc ───────────────────────────────────────────────────── */
 .badge { font-size: 11px; font-weight: 500; background: var(--c-bg2); padding: 2px 8px; border-radius: 4px; color: var(--c-text2); }
