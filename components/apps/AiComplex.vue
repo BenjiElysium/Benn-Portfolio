@@ -7,6 +7,7 @@ import {
   STATUS, statusOf, directionOf, statusCounts, pressureCategories, latestReading, latestDate,
   staleness, laneLayout, shapePath, readingGroups, formatDate, formatValue, leadLabel, seriesCount,
   arrivalDate, watchArrivalWindow,
+  tierOf, TIER_ORDER, gaugeModel, sparkModel, moveOf, focusRun, risingOf, roomToLine, latestBySeries,
 } from '~/composables/useAiComplex'
 
 const { data, pending, error } = await useFetch('/api/ai-complex/signals')
@@ -25,6 +26,28 @@ function toggleFilter(status) {
 }
 
 const counts = computed(() => statusCounts(signals.value))
+
+// Per-signal glanceables: gauge, sparkline and the wordless latest-move mark.
+const vis = computed(() => new Map(signals.value.map(s => {
+  const run = focusRun(s)
+  return [s.id, {
+    tier: tierOf(s),
+    gauge: gaugeModel(s),
+    spark: sparkModel(s),
+    move: moveOf(s, run),
+    rising: risingOf(run),
+    room: run ? roomToLine(s, run.last.value) : null,
+    // Multi-series signals list each series instead of one arbitrary headline.
+    series: seriesCount(s) > 1 ? latestBySeries(s).slice(0, 3) : null,
+  }]
+})))
+// Grid order: key signals first, then the watch list, then least room to its line.
+const SEVERITY = { Red: 0, Amber: 1, Green: 2, 'Not yet tracked': 3 }
+const gridList = computed(() => [...signals.value].sort((a, b) =>
+  TIER_ORDER[tierOf(a)] - TIER_ORDER[tierOf(b)]
+  || (SEVERITY[a.status] ?? 3) - (SEVERITY[b.status] ?? 3)
+  || (vis.value.get(a.id).room ?? Infinity) - (vis.value.get(b.id).room ?? Infinity)
+  || (b.leadMonths ?? 0) - (a.leadMonths ?? 0)))
 const summary = computed(() => {
   const total = signals.value.length
   if (!total) return ''
@@ -76,7 +99,7 @@ onUnmounted(() => { ro?.disconnect(); cancelAnimationFrame(raf) })
 const view = ref('lead')
 const compact = computed(() => boardWidth.value < 560)
 const board = computed(() => laneLayout(signals.value, {
-  width: boardWidth.value, mode: view.value, todayIso,
+  width: boardWidth.value, mode: view.value === 'arrival' ? 'arrival' : 'lead', todayIso,
   ...(compact.value
     ? { laneHeight: 64, labelBand: 22, margin: { top: 22, right: 16, bottom: 40, left: 16 } }
     : { margin: { top: 26, right: 24, bottom: 40, left: 168 } }),
@@ -229,9 +252,9 @@ const sortedList = computed(() =>
             <section class="rounded-xl border border-zinc-800 bg-[#141417] p-4 sm:p-5">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div>
-                  <h2 class="text-sm font-medium text-zinc-200">{{ view === 'lead' ? 'Lead-time board' : 'When it reaches revenue' }}</h2>
+                  <h2 class="text-sm font-medium text-zinc-200">{{ { lead: 'Lead-time board', arrival: 'When it reaches revenue', grid: 'Signal grid' }[view] }}</h2>
                   <p class="text-[11px] text-zinc-500">
-                    {{ view === 'lead' ? 'Earlier warning on the left, in reported revenue on the right' : 'Latest reading + estimated lead time' }}
+                    {{ { lead: 'Earlier warning on the left, in reported revenue on the right', arrival: 'Latest reading + estimated lead time', grid: 'Key signals first, then whatever sits closest to its line' }[view] }}
                   </p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -242,8 +265,11 @@ const sortedList = computed(() =>
                     <button type="button" class="px-2.5 py-1 rounded text-[12px] transition-colors"
                       :class="view === 'arrival' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'"
                       :aria-pressed="view === 'arrival'" @click="setView('arrival')">Arrival</button>
+                    <button type="button" class="px-2.5 py-1 rounded text-[12px] transition-colors"
+                      :class="view === 'grid' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'"
+                      :aria-pressed="view === 'grid'" @click="setView('grid')">Grid</button>
                   </div>
-                  <button type="button" class="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 hover:border-zinc-500 px-2.5 py-1 text-[12px] text-zinc-200 transition-colors"
+                  <button v-if="view !== 'grid'" type="button" class="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 hover:border-zinc-500 px-2.5 py-1 text-[12px] text-zinc-200 transition-colors"
                     @click="playing ? stop() : play()">
                     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
                       <path v-if="playing" d="M1 1h8v8H1z" fill="currentColor" />
@@ -254,7 +280,54 @@ const sortedList = computed(() =>
                 </div>
               </div>
 
-              <div ref="boardEl" class="relative">
+              <!-- ── Grid: one card per signal, key signals double-width ── -->
+              <div v-if="view === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button v-for="s in gridList" :key="s.id" type="button"
+                  class="text-left rounded-lg border p-3.5 transition-[opacity,border-color,background-color] duration-300"
+                  :class="[
+                    vis.get(s.id).tier === 'Key' ? 'sm:col-span-2 p-4' : '',
+                    selected?.id === s.id ? 'border-zinc-500 bg-zinc-800/50' : highlightId === s.id ? 'border-zinc-600 bg-zinc-900/60' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700',
+                    isShown(s) ? '' : 'opacity-25',
+                  ]"
+                  :aria-pressed="selected?.id === s.id"
+                  @click="select(s)" @mouseenter="highlightId = s.id" @mouseleave="highlightId = null">
+                  <span class="flex items-start gap-2">
+                    <svg :width="vis.get(s.id).tier === 'Key' ? 13 : 11" :height="vis.get(s.id).tier === 'Key' ? 13 : 11" viewBox="0 0 14 14" class="mt-[3px] shrink-0" aria-hidden="true">
+                      <path :d="shapePath(statusOf(s.status).shape, 7, 7, 5)"
+                        :fill="statusOf(s.status).shape === 'ring' ? 'none' : statusOf(s.status).color"
+                        :stroke="statusOf(s.status).shape === 'ring' ? statusOf(s.status).color : 'none'" stroke-width="1.5" />
+                    </svg>
+                    <span class="min-w-0 flex-1 leading-snug"
+                      :class="{ Key: 'text-[14px] font-medium text-zinc-100', Standard: 'text-[13px] text-zinc-200', Context: 'text-[12px] text-zinc-400' }[vis.get(s.id).tier]">{{ s.label }}</span>
+                    <AppsAiComplexMove :move="vis.get(s.id).move" :rising="vis.get(s.id).rising" :size="vis.get(s.id).tier === 'Key' ? 12 : 10" class="mt-[3px]" />
+                  </span>
+                  <span class="mt-2 flex items-end gap-4">
+                    <span v-if="vis.get(s.id).series" class="min-w-0 flex-1 space-y-0.5">
+                      <span v-for="r in vis.get(s.id).series" :key="r.series" class="flex items-baseline justify-between gap-3 text-[12px]">
+                        <span class="text-zinc-500 truncate">{{ r.series }}</span>
+                        <span class="shrink-0 tabular-nums" :class="vis.get(s.id).tier === 'Key' ? 'text-[15px] font-semibold text-zinc-100' : 'text-zinc-200'">{{ formatValue(r.value, r.unit) }}</span>
+                      </span>
+                    </span>
+                    <span v-else class="min-w-0 flex-1">
+                      <!-- numbers get headline size; prose readings stay readable at two lines -->
+                      <span class="block text-zinc-100 leading-tight"
+                        :class="(latestReading(s)?.display || '').length > 22
+                          ? 'text-[13px] text-zinc-300 line-clamp-2'
+                          : ['truncate', { Key: 'text-2xl font-semibold', Standard: 'text-base font-medium', Context: 'text-sm text-zinc-300' }[vis.get(s.id).tier]]">
+                        {{ latestReading(s)?.display || (latestReading(s) ? formatValue(latestReading(s).value, latestReading(s).unit) : 'No reading yet') }}
+                      </span>
+                    </span>
+                    <span v-if="vis.get(s.id).spark && vis.get(s.id).tier !== 'Context'" class="shrink-0 h-6" :class="vis.get(s.id).tier === 'Key' ? 'w-28' : 'w-16'">
+                      <AppsAiComplexSpark :model="vis.get(s.id).spark" :color="statusOf(s.status).color" />
+                    </span>
+                  </span>
+                  <span v-if="vis.get(s.id).gauge" class="block mt-3">
+                    <AppsAiComplexGauge :model="vis.get(s.id).gauge" :size="vis.get(s.id).tier === 'Key' ? 'lg' : 'md'" />
+                  </span>
+                </button>
+              </div>
+
+              <div v-show="view !== 'grid'" ref="boardEl" class="relative">
                 <svg :width="boardWidth" :height="board.height" class="block" role="group"
                   :aria-label="view === 'lead' ? 'Signals by lead time' : 'Signals by estimated arrival in revenue'">
                   <!-- lanes -->
@@ -302,12 +375,12 @@ const sortedList = computed(() =>
                     :aria-pressed="selected?.id === d.signal.id"
                     @click="select(d.signal)" @keydown.enter.prevent="select(d.signal)" @keydown.space.prevent="select(d.signal)"
                     @pointerenter="hoverOn(d)" @pointerleave="hoverOff" @focus="hoverOn(d)" @blur="hoverOff">
-                    <circle r="13" fill="transparent" />
-                    <circle v-if="selected?.id === d.signal.id" r="11" fill="none" stroke="#e4e4e7" stroke-width="1.5" />
-                    <circle v-else-if="highlightId === d.signal.id" r="11" fill="none" stroke="#71717a" stroke-width="1.5" />
-                    <circle v-if="arrived(d)" r="6" fill="none" :stroke="statusOf(d.signal.status).color" stroke-width="2" class="ac-pulse" />
+                    <circle :r="Math.max(13, d.r + 6)" fill="transparent" />
+                    <circle v-if="selected?.id === d.signal.id" :r="d.r + 5" fill="none" stroke="#e4e4e7" stroke-width="1.5" />
+                    <circle v-else-if="highlightId === d.signal.id" :r="d.r + 5" fill="none" stroke="#71717a" stroke-width="1.5" />
+                    <circle v-if="arrived(d)" :r="d.r" fill="none" :stroke="statusOf(d.signal.status).color" stroke-width="2" class="ac-pulse" />
                     <path
-                      :d="shapePath(statusOf(d.signal.status).shape, 0, 0, highlightId === d.signal.id ? 7 : 6)"
+                      :d="shapePath(statusOf(d.signal.status).shape, 0, 0, highlightId === d.signal.id ? d.r + 1 : d.r)"
                       :fill="statusOf(d.signal.status).shape === 'ring' ? '#141417' : statusOf(d.signal.status).color"
                       :stroke="statusOf(d.signal.status).shape === 'ring' ? statusOf(d.signal.status).color : '#141417'"
                       stroke-width="2" />
@@ -325,6 +398,15 @@ const sortedList = computed(() =>
                     Reaches revenue ~{{ formatDate(arrivals.get(hoverDot.signal.id), { short: true }) }}
                   </p>
                 </div>
+              </div>
+
+              <!-- one-line key for the wordless marks -->
+              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+                <span class="inline-flex items-center gap-1.5"><AppsAiComplexMove move="better" :rising="true" />improving</span>
+                <span class="inline-flex items-center gap-1.5"><AppsAiComplexMove move="worse" :rising="true" />worth watching</span>
+                <span v-if="view !== 'grid'" class="inline-flex items-center gap-1.5">
+                  <svg width="18" height="10" viewBox="0 0 18 10" aria-hidden="true"><circle cx="4" cy="5" r="3" fill="#71717a" /><circle cx="13" cy="5" r="4.5" fill="#71717a" /></svg>larger dot = key signal
+                </span>
               </div>
 
               <p v-if="view === 'arrival'" class="mt-3 text-[12px] text-zinc-400 leading-relaxed">
@@ -350,13 +432,20 @@ const sortedList = computed(() =>
                         :stroke="statusOf(s.status).shape === 'ring' ? statusOf(s.status).color : 'none'" stroke-width="1.5" />
                     </svg>
                     <span class="min-w-0 flex-1">
-                      <span class="block text-[13px] text-zinc-200 truncate">{{ s.label }}</span>
+                      <span class="block text-[13px] truncate"
+                        :class="{ Key: 'text-zinc-100 font-medium', Standard: 'text-zinc-200', Context: 'text-zinc-400' }[vis.get(s.id).tier]">{{ s.label }}</span>
                       <span class="block text-[11px] text-zinc-500 truncate">
                         {{ s.category }} · {{ statusOf(s.status).label }} · {{ directionOf(s.direction).label }}
                       </span>
                     </span>
-                    <span class="shrink-0 text-right">
-                      <span class="block text-[12px] text-zinc-300 tabular-nums">{{ latestReading(s)?.display || '—' }}</span>
+                    <span v-if="vis.get(s.id).spark" class="hidden sm:block shrink-0 w-14 h-5">
+                      <AppsAiComplexSpark :model="vis.get(s.id).spark" :color="statusOf(s.status).color" />
+                    </span>
+                    <span class="shrink-0 w-2.5 flex justify-center">
+                      <AppsAiComplexMove :move="vis.get(s.id).move" :rising="vis.get(s.id).rising" />
+                    </span>
+                    <span class="shrink-0 text-right max-w-[9rem]">
+                      <span class="block text-[12px] text-zinc-300 tabular-nums truncate">{{ latestReading(s)?.display || '—' }}</span>
                       <span class="block text-[11px] text-zinc-500 tabular-nums">{{ s.leadMonths ?? '?' }} mo lead</span>
                     </span>
                   </button>
@@ -398,6 +487,14 @@ const sortedList = computed(() =>
                   <p class="text-xs text-zinc-500 mt-1">{{ detail.headline.series }} · {{ formatDate(detail.headline.date) }}</p>
                 </div>
                 <p v-else-if="!detail.s.readings.length" class="text-sm text-zinc-500 mb-5">No readings published yet.</p>
+
+                <div v-if="vis.get(detail.s.id)?.gauge" class="mb-6 -mt-1">
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <AppsAiComplexMove :move="vis.get(detail.s.id).move" :rising="vis.get(detail.s.id).rising" />
+                    <span v-if="!detail.headline" class="text-[11px] text-zinc-500">{{ vis.get(detail.s.id).gauge.series }}</span>
+                  </div>
+                  <AppsAiComplexGauge :model="vis.get(detail.s.id).gauge" size="lg" />
+                </div>
 
                 <div class="space-y-6">
                   <AppsAiComplexReadings v-for="g in detail.groups" :key="`${detail.s.id}-${g.unit}`" :group="g" :width="detailWidth" />
