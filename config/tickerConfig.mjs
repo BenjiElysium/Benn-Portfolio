@@ -13,7 +13,7 @@ export const NVDA_CONFIG = {
   baseValueLabel: 'FY2026 normalized non-GAAP EPS',
   baseValueMeta: { asOf: '2026-01-25', source: 'Q4/FY2026 earnings release', verified: true },
   // Rolling trailing-twelve-months non-GAAP diluted EPS for the live P/E point.
-  // Construction: FY2026 total − Q1 FY2026 + Q1 FY2027 = 4.77 − 0.81 + 1.87 = 5.83.
+  // Construction: sum of the four most recent reported quarters (below).
   // All figures verified against NVIDIA earnings releases (nvidianews.nvidia.com),
   // as-reported non-GAAP diluted EPS:
   //   Q1 FY2026 (ended 2025-04-27): 0.81  — Q1 FY2026 release (0.96 ex-H20; the
@@ -23,30 +23,40 @@ export const NVDA_CONFIG = {
   //   Q3 FY2026 (ended 2025-10-26): 1.30  — Q3 FY2026 release
   //   Q4 FY2026 (ended 2026-01-25): 1.62  — Q4/FY2026 release
   //   Q1 FY2027 (ended 2026-04-26): 1.87  — Q1 FY2027 release
-  // Quarters sum to 4.78 vs full-year 4.77 (weighted-average share-count artifact).
-  // As of the Q1 FY2027 release (May 2026). Distinct from baseValue by design.
+  //   Q2 FY2027 (ended 2026-07-26): 2.22  — Q2 FY2027 release (excludes the
+  //                                         $7.8B gain on equity securities
+  //                                         that lifts GAAP EPS to 2.46)
+  // TTM = last four quarters: 1.30 + 1.62 + 1.87 + 2.22 = 7.01.
+  // As of the Q2 FY2027 release (Aug 26, 2026). Distinct from baseValue by design.
   // NOTE: the source spreadsheet's "TTM P/E 33.0 @ $225.31" implies ~6.83 TTM EPS,
   // which no combination of filed quarters reproduces — likely a forward/blended
   // cell, flagged upstream. Do not re-derive this field from that anchor.
-  ttmEps: 5.83,
-  ttmEpsMeta: { asOf: '2026-04-26', source: 'Q1 FY2027 earnings release', verified: true },
-  forward: { y1: 8.98, y2: 12.79 },  // updated consensus estimates
-  // Consensus figures from the source-spreadsheet snapshot; exact capture date
-  // not independently traceable, bounded by the snapshot period → verified: false.
-  forwardMeta: { asOf: '2026-04-26', source: 'consensus snapshot (source spreadsheet)', verified: false },
+  ttmEps: 7.01,
+  ttmEpsMeta: { asOf: '2026-07-26', source: 'Q2 FY2027 earnings release', verified: true },
+  // Consensus non-GAAP EPS after the Q2 FY2027 print: FY2027 (Jan 2027) avg of
+  // 51 analysts, FY2028 avg of 53. The April snapshot was 8.98 / 12.79.
+  forward: { y1: 9.31, y2: 15.68 },
+  forwardMeta: { asOf: '2026-09-29', source: 'Yahoo Finance analyst consensus', verified: true },
   multipleBand: { min: 39.5, max: 58.9 },
   projectionGrowth: 33.6,
-  capm: { rf: 0.0456, erp: 0.055, beta: 2.00 },  // d = 15.56%
-  seedValues: [8.98, 12.79],  // FY2027, FY2028 consensus
+  // Beta is the Blume-adjusted raw beta (0.67 × 2.00 + 0.33 = 1.67), the
+  // standard correction for raw betas drifting toward 1 over time. The raw
+  // 2.00 gave d = 15.56%, well above typical cost-of-equity estimates for NVDA.
+  capm: { rf: 0.0456, erp: 0.055, beta: 1.67 },  // d = 13.75%
+  seedValues: [9.31, 15.68],  // FY2027, FY2028 consensus
   growthStages: [
     { years: 3, rate: 0.30 },   // years 3-5
     { years: 5, rate: 0.20 },   // years 6-10
   ],
-  terminal: { growth: 0.15, years: 10 },
-  revenueModel: { q1: 78, q2: 93.5, q3: 112.5, q4: 140 },
+  // After the staged years: `years` of fade growth (Rx formula), then a
+  // perpetuity at `perpetualGrowth`. Without the perpetuity the model valued
+  // nothing past year 20.
+  terminal: { growth: 0.15, years: 10, perpetualGrowth: 0.035 },
+  // Q1, Q2 actual; Q3 is company guidance ($108B ± 2%); Q4 is a model input.
+  revenueModel: { q1: 81.6, q2: 96.2, q3: 108, q4: 140 },
   // Seeds internal chart/positioning math only. UI shows a skeleton until the
   // live quote resolves — never displayed as a live price, never used for verdicts.
-  priceFallback: 227.00,
+  priceFallback: 228.40,
   // Canonical completed-quarter TTM P/E series (chronological, dated). Single
   // source of truth for the component; the live Current point is derived from
   // price ÷ ttmEps and is never stored here.
@@ -59,6 +69,7 @@ export const NVDA_CONFIG = {
     { label: 'Oct 2025', date: '2025-10-26', value: 57.69 },
     { label: 'Jan 2026', date: '2026-01-25', value: 47.31 },
     { label: 'Apr 2026', date: '2026-04-26', value: 40.70 },
+    { label: 'Jul 2026', date: '2026-07-26', value: 29.51 },  // $206.84 close (Jul 24) ÷ 7.01 TTM
   ],
   sliderConfig: {
     sections: [
@@ -96,13 +107,13 @@ export const NVDA_CONFIG = {
       label: 'Bear',
       description: 'Deceleration begins in FY2028. Multiple compresses to '
                  + 'the low end of the historical range.',
-      seedValues: [8.98],
+      seedValues: [9.31],
       growthStages: [
         { years: 1, rate: 0.25 },
         { years: 3, rate: 0.12 },
         { years: 5, rate: 0.05 }
       ],
-      terminal: { growth: 0.04, years: 10 },
+      terminal: { growth: 0.04, years: 10, perpetualGrowth: 0.035 },
       multipleBand: { min: 25.0, max: 33.0 }
     },
 
@@ -111,12 +122,12 @@ export const NVDA_CONFIG = {
       description: 'Consensus through FY2028, then decelerating toward a '
                  + 'mature growth rate. Multiple band floor is the '
                  + 'Qtr-12 P/E trend estimate of 29.4x.',
-      seedValues: [8.98, 12.79],
+      seedValues: [9.31, 15.68],
       growthStages: [
         { years: 3, rate: 0.20 },
         { years: 5, rate: 0.12 }
       ],
-      terminal: { growth: 0.08, years: 10 },
+      terminal: { growth: 0.08, years: 10, perpetualGrowth: 0.035 },
       multipleBand: { min: 29.0, max: 40.0 }
     },
 
@@ -125,12 +136,12 @@ export const NVDA_CONFIG = {
       description: 'Sustained hyper-growth: 30% for three years, then 20%, '
                  + 'with a 15% terminal. The ceiling case — no scenario '
                  + 'models above it.',
-      seedValues: [8.98, 12.79],
+      seedValues: [9.31, 15.68],
       growthStages: [
         { years: 3, rate: 0.30 },
         { years: 5, rate: 0.20 }
       ],
-      terminal: { growth: 0.15, years: 10 },
+      terminal: { growth: 0.15, years: 10, perpetualGrowth: 0.035 },
       multipleBand: { min: 37.28, max: 47.85 }
     }
   },

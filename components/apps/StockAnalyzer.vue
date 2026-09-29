@@ -642,6 +642,10 @@ function nSetTerminalYears(v) {
   const y = Math.round(+v)
   if (Number.isFinite(y) && y >= 1 && y <= 50 && nvdaState.terminal) nvdaState.terminal.years = y
 }
+function nSetPerpetualGrowth(v) {
+  const g = +v
+  if (Number.isFinite(g) && g >= 0 && g <= 10 && nvdaState.terminal) nvdaState.terminal.perpetualGrowth = g / 100
+}
 
 // Value path rows: seed years are consensus INPUTS, the rest are model output.
 const nValuePath = computed(() => {
@@ -664,6 +668,9 @@ const nDcfBreakdown = computed(() => {
     mult: full.mult,
     terminalNumerator: full.terminalNumerator,
     pvTerminal: full.pvTerminal,
+    pvFade: full.pvFade,
+    pvPerpetual: full.pvPerpetual,
+    perpetualDiverges: full.perpetualDiverges,
     pvEarnings: full.intrinsic - full.pvTerminal,
     floor: full.intrinsic,
     yr5EPS: full.valuePath[4] ?? 0,
@@ -2308,10 +2315,10 @@ watch(watchlist, () => {
           </div>
           <div class="metric-card metric-card-help">
             <div class="mc-head">
-              <p class="mc-label">Two-phase DCF floor</p>
-              <button type="button" class="help-dot" aria-label="Explain two-phase DCF floor">?</button>
+              <p class="mc-label">Staged DCF floor</p>
+              <button type="button" class="help-dot" aria-label="Explain staged DCF floor">?</button>
               <div class="metric-help" role="tooltip">
-                Present value estimate: {{ dlr(nDcfBreakdown.pvEarnings) }} discounted EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} discounted terminal value.
+                Present value estimate: {{ dlr(nDcfBreakdown.pvEarnings) }} discounted EPS for years 1&ndash;10 + {{ dlr(nDcfBreakdown.pvTerminal) }} discounted value beyond year 10, at {{ nD }}%.
               </div>
             </div>
             <p class="mc-value">{{ dlr(nFloor) }}</p>
@@ -2502,11 +2509,11 @@ watch(watchlist, () => {
           <p class="note">Dotted lines extrapolate using projection growth g and the same P/E range &mdash; not a forecast.</p>
         </div>
 
-        <!-- ── Two-phase DCF card ─────────────────────────────── -->
+        <!-- ── Staged DCF card ──────────────────────────────────── -->
         <div class="card">
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
-          <div class="insight">This is a present-value estimate, not a price target. It grows consensus EPS for 2 years, then applies staged growth rates for 8 years, discounts those future dollars back at {{ nD }}%, and derives terminal value using the Rx formula.</div>
-          <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
+          <div class="insight">This is a present-value estimate, not a price target. It takes consensus EPS for 2 years, applies staged growth rates for 8 more, then values everything after year 10 as a {{ nTerminal.years }}-year fade at {{ +(nTerminal.growth * 100).toFixed(1) }}% (Rx formula) followed by growth of {{ +((nTerminal.perpetualGrowth ?? 0) * 100).toFixed(1) }}% a year in perpetuity &mdash; all discounted back at {{ nD }}%.</div>
+          <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvFade) }} from the fade years + {{ dlr(nDcfBreakdown.pvPerpetual) }} from the perpetuity = {{ dlr(nDcfBreakdown.floor) }}.</div>
           <div class="insight" :class="nDcfImpliedRev.flagged ? 'rev-sanity-warning' : ''">
             <strong>Yr-10 implied revenue:</strong> {{ dlr(nDcfImpliedRev.value / 1e12) }}T
             <span v-if="nDcfImpliedRev.flagged" class="rev-sanity-flag" title="This growth path implies annual revenue larger than the entire current global semiconductor industry. Confirm this is intended.">
@@ -2540,8 +2547,10 @@ watch(watchlist, () => {
               <div class="mi-title">Terminal value</div>
               <div class="mi-row"><label>Terminal growth</label><input type="number" step="0.5" min="0" max="30" :value="+(nTerminal.growth * 100).toFixed(1)" @change="e => nSetTerminalGrowth(e.target.value)" class="mi-input" /><span>%</span></div>
               <div class="mi-row"><label>Terminal years</label><input type="number" step="1" min="1" max="50" :value="nTerminal.years" @change="e => nSetTerminalYears(e.target.value)" class="mi-input" /><span>&nbsp;</span></div>
-              <div class="mi-note">Rx {{ nDcfBreakdown.Rx.toFixed(5) }} &middot; derived multiple {{ nDcfBreakdown.mult.toFixed(3) }} &middot; terminal {{ (nTerminalPercent * 100).toFixed(0) }}% of intrinsic</div>
+              <div class="mi-row"><label>Then, in perpetuity</label><input type="number" step="0.5" min="0" max="10" :value="+((nTerminal.perpetualGrowth ?? 0) * 100).toFixed(1)" @change="e => nSetPerpetualGrowth(e.target.value)" class="mi-input" /><span>%</span></div>
+              <div class="mi-note">Rx {{ nDcfBreakdown.Rx.toFixed(5) }} &middot; derived multiple {{ nDcfBreakdown.mult.toFixed(3) }} &middot; beyond year 10 is {{ (nTerminalPercent * 100).toFixed(0) }}% of intrinsic</div>
               <div v-if="nTerminalDiverges" class="mi-note mi-warn">⚠️ Terminal growth ≥ discount rate — terminal value grows with each added year. Confirm this is intended.</div>
+              <div v-if="nDcfBreakdown.perpetualDiverges" class="mi-note mi-warn">⚠️ Perpetual growth ≥ discount rate — the perpetuity has no finite value and is left out.</div>
             </div>
           </div>
 
@@ -2675,7 +2684,8 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ nD }}%). Edit rf, erp, and beta in the model inputs.</span></div>
           <div class="gterm"><span class="gterm-name">Scenario preset</span><span class="gterm-def">A complete model configuration &mdash; seed years, growth stages, terminal assumptions, and multiple band. Bear, Base, and Bull; the conviction banner grades the live multiple against the active scenario's band.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum a stock should be worth based on DCF. A margin-of-safety check, not a price target.</span></div>
-          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">The business's value beyond the projection years, from the Rx formula: Rx = (1 + terminal growth) &divide; (1 + d); multiple = Rx &times; (Rx<sup>years</sup> &minus; 1) &divide; (Rx &minus; 1) &mdash; not a fixed exit multiple.</span></div>
+          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">The business's value beyond the 10 projection years, in two parts. First a fade period from the Rx formula: Rx = (1 + terminal growth) &divide; (1 + d); multiple = Rx &times; (Rx<sup>years</sup> &minus; 1) &divide; (Rx &minus; 1). Then a perpetuity: the last fade-year EPS &times; (1 + perpetual growth) &divide; (d &minus; perpetual growth), discounted to today. Not a fixed exit multiple.</span></div>
+          <div class="gterm"><span class="gterm-name">Discount rate</span><span class="gterm-def">CAPM: rf + beta &times; equity risk premium. Beta is Blume-adjusted (0.67 &times; raw 2.00 + 0.33 = 1.67), the standard correction for raw betas drifting toward 1.</span></div>
         </div>
       </div>
 

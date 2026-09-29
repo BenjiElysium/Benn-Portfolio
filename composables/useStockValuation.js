@@ -227,7 +227,8 @@ export function applyHistoryCutoff(data, cutoffYear) {
  *   baseValue: number,           — starting value (if no seeds)
  *   seedValues?: number[],       — analyst consensus years (e.g., [8.98, 12.79])
  *   growthStages: {years:number, rate:number}[], — phases after seeds
- *   terminal: {growth:number, years:number},    — terminal growth rate and projection years
+ *   terminal: {growth:number, years:number, perpetualGrowth?:number},
+ *                                — Rx fade growth + years; optional perpetuity after them
  *   discountRate: number         — d (e.g., 0.1556 = 15.56%)
  * }} p
  * @returns {{
@@ -236,9 +237,12 @@ export function applyHistoryCutoff(data, cutoffYear) {
  *   Rx: number,                  — (1 + g_terminal) / (1 + d)
  *   mult: number,                — Rx-derived terminal multiple
  *   terminalNumerator: number,   — V[N] * mult (terminal value at year N)
- *   pvTerminal: number,          — PV of terminal numerator
+ *   pvFade: number,              — PV of the Rx fade years
+ *   pvPerpetual: number,         — PV of the perpetuity (0 when not configured)
+ *   pvTerminal: number,          — pvFade + pvPerpetual: everything beyond the staged years
  *   intrinsic: number            — sum(PV(V)) + PV(terminal)
  *   terminalDiverges: boolean    — true if terminal growth >= discount rate (value grows unbounded)
+ *   perpetualDiverges: boolean   — perpetual growth >= discount rate (perpetuity dropped)
  *   terminalAsPercentOfIntrinsic: number — terminal value as % of total intrinsic
  * }}
  */
@@ -299,8 +303,22 @@ export function computeStagedDCF({
   }
 
   const terminalNumerator = current * mult
-  const pvTerminal = terminalNumerator / Math.pow(1 + d, yearIndex - 1)
+  const pvFade = terminalNumerator / Math.pow(1 + d, yearIndex - 1)
 
+  // Optional perpetuity after the Rx years. Without it the model values
+  // nothing past year (projection + terminal.years) — a finite-life floor.
+  // With it: Gordon growth on the last Rx-year value, discounted from there.
+  const g_p = terminal.perpetualGrowth
+  const hasPerpetual = Number.isFinite(g_p)
+  const perpetualDiverges = hasPerpetual && g_p >= d
+  let pvPerpetual = 0
+  if (hasPerpetual && !perpetualDiverges) {
+    const lastYear = yearIndex - 1 + t_years
+    const lastValue = current * Math.pow(1 + g_t, t_years)
+    pvPerpetual = (lastValue * (1 + g_p) / (d - g_p)) / Math.pow(1 + d, lastYear)
+  }
+
+  const pvTerminal = pvFade + pvPerpetual
   const intrinsic = pvPath.reduce((a, b) => a + b, 0) + pvTerminal
   const terminalAsPercentOfIntrinsic = intrinsic > 0 ? pvTerminal / intrinsic : 0
 
@@ -310,9 +328,12 @@ export function computeStagedDCF({
     Rx,
     mult,
     terminalNumerator,
+    pvFade,
+    pvPerpetual,
     pvTerminal,
     intrinsic,
     terminalDiverges,
+    perpetualDiverges,
     terminalAsPercentOfIntrinsic,
   }
 }
