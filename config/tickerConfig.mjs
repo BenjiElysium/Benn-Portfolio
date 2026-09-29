@@ -177,8 +177,9 @@ export const BX_CONFIG = {
   growthStages: [
     { years: 8, rate: 0.10 },   // years 3-10 at flat 10%
   ],
-  // 20 fade years, then a perpetuity — see NVDA.
-  terminal: { growth: 0.12, years: 20, perpetualGrowth: 0.035 },
+  // 20 fade years at 8%, then a perpetuity — see NVDA. The fade was 12%
+  // (above the discount rate) back when nothing past the fade was valued.
+  terminal: { growth: 0.08, years: 20, perpetualGrowth: 0.035 },
   payoutRatio: 85,
   revenueModel: null,  // BX doesn't have a quarterly revenue model in the UI
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
@@ -291,8 +292,9 @@ export const GOOGL_CONFIG = {
     { years: 5, rate: 0.20 },   // years 1-5
     { years: 5, rate: 0.12 },   // years 6-10
   ],
-  // 10 fade years, then a perpetuity — see NVDA.
-  terminal: { growth: 0.12, years: 10, perpetualGrowth: 0.035 },
+  // 10 fade years at 8%, then a perpetuity — see NVDA. The fade was 12%
+  // (above the discount rate) back when nothing past the fade was valued.
+  terminal: { growth: 0.08, years: 10, perpetualGrowth: 0.035 },
   // Q1 ($109.9B) and Q2 ($119.8B) actual; Q3 is consensus ($127.3B) and Q4 is
   // the CY2026 consensus ($498.6B) less the other three.
   revenueModel: { q1: 109.9, q2: 119.8, q3: 127.3, q4: 141.6 },
