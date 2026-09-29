@@ -194,7 +194,10 @@ export function laneLayout(signals, {
     const cy = top + labelBand + (laneHeight - labelBand) / 2
     // Signals sharing an x in one lane fan out vertically instead of overlapping.
     const byX = new Map()
-    for (const s of [...lane.list].sort((a, b) => (b.leadMonths ?? 0) - (a.leadMonths ?? 0))) {
+    // Key signals sort first within a shared x, so they take the centre spot.
+    const ordered = [...lane.list].sort((a, b) =>
+      (b.leadMonths ?? 0) - (a.leadMonths ?? 0) || TIER_ORDER[tierOf(a)] - TIER_ORDER[tierOf(b)])
+    for (const s of ordered) {
       const x = xOf(s)
       // Unplaced (arrival mode, no reading): hold the lead-time spot while faded out.
       const cx = x ?? xLead(s.leadMonths)
@@ -203,7 +206,7 @@ export function laneLayout(signals, {
         const key = Math.round(cx / 14)
         const n = byX.get(key) ?? 0
         byX.set(key, n + 1)
-        offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 15
+        offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 17
       }
       dots.push({ signal: s, cx, cy: cy + offset, lane: i, placed: x !== null, r: DOT_RADIUS[tierOf(s)] })
     }
@@ -233,7 +236,7 @@ export function shapePath(shape, cx, cy, r) {
 // Tier is editorial weight from Notion: Key signals draw larger everywhere.
 export const TIER_ORDER = { Key: 0, Standard: 1, Context: 2 }
 export const tierOf = s => (s.tier in TIER_ORDER ? s.tier : 'Standard')
-export const DOT_RADIUS = { Key: 8, Standard: 6, Context: 4.5 }
+export const DOT_RADIUS = { Key: 9.5, Standard: 6, Context: 4 }
 
 // Actual readings in the signal's chart unit, grouped by series, with the
 // latest and the one before it.

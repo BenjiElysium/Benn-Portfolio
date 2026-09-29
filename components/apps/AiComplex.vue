@@ -190,8 +190,13 @@ const thresholdText = computed(() => {
   return parts.length ? `Flags ${parts.join(', ')}` : ''
 })
 
-const sortedList = computed(() =>
-  [...visible.value].sort((a, b) => (b.leadMonths ?? 0) - (a.leadMonths ?? 0) || a.label.localeCompare(b.label)))
+const byLeadThenName = (a, b) => (b.leadMonths ?? 0) - (a.leadMonths ?? 0) || a.label.localeCompare(b.label)
+// The list leads with the key signals, then everything else.
+const listGroups = computed(() => {
+  const key = visible.value.filter(s => tierOf(s) === 'Key').sort(byLeadThenName)
+  const rest = visible.value.filter(s => tierOf(s) !== 'Key').sort(byLeadThenName)
+  return [{ title: 'Key signals', items: key }, { title: 'Other signals', items: rest }].filter(g => g.items.length)
+})
 </script>
 
 <template>
@@ -378,12 +383,14 @@ const sortedList = computed(() =>
                     <circle :r="Math.max(13, d.r + 6)" fill="transparent" />
                     <circle v-if="selected?.id === d.signal.id" :r="d.r + 5" fill="none" stroke="#e4e4e7" stroke-width="1.5" />
                     <circle v-else-if="highlightId === d.signal.id" :r="d.r + 5" fill="none" stroke="#71717a" stroke-width="1.5" />
+                    <!-- key signals wear a soft halo so they read at a glance -->
+                    <circle v-if="vis.get(d.signal.id).tier === 'Key'" :r="d.r + 4.5" fill="none" :stroke="statusOf(d.signal.status).color" stroke-opacity="0.35" stroke-width="2.5" />
                     <circle v-if="arrived(d)" :r="d.r" fill="none" :stroke="statusOf(d.signal.status).color" stroke-width="2" class="ac-pulse" />
                     <path
                       :d="shapePath(statusOf(d.signal.status).shape, 0, 0, highlightId === d.signal.id ? d.r + 1 : d.r)"
                       :fill="statusOf(d.signal.status).shape === 'ring' ? '#141417' : statusOf(d.signal.status).color"
                       :stroke="statusOf(d.signal.status).shape === 'ring' ? statusOf(d.signal.status).color : '#141417'"
-                      stroke-width="2" />
+                      stroke-width="2" :opacity="vis.get(d.signal.id).tier === 'Context' ? 0.7 : 1" />
                   </g>
                 </svg>
 
@@ -405,7 +412,10 @@ const sortedList = computed(() =>
                 <span class="inline-flex items-center gap-1.5"><AppsAiComplexMove move="better" :rising="true" />improving</span>
                 <span class="inline-flex items-center gap-1.5"><AppsAiComplexMove move="worse" :rising="true" />worth watching</span>
                 <span v-if="view !== 'grid'" class="inline-flex items-center gap-1.5">
-                  <svg width="18" height="10" viewBox="0 0 18 10" aria-hidden="true"><circle cx="4" cy="5" r="3" fill="#71717a" /><circle cx="13" cy="5" r="4.5" fill="#71717a" /></svg>larger dot = key signal
+                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.5" fill="none" stroke="#a1a1aa" stroke-opacity="0.45" stroke-width="2" /><circle cx="9" cy="9" r="4.5" fill="#a1a1aa" /></svg>key signal
+                </span>
+                <span v-if="view !== 'grid'" class="inline-flex items-center gap-1.5">
+                  <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="2.5" fill="#71717a" /></svg>context
                 </span>
               </div>
 
@@ -420,9 +430,12 @@ const sortedList = computed(() =>
 
             <!-- Signal list: the board's table view -->
             <section class="rounded-xl border border-zinc-800 bg-zinc-900/30">
-              <h2 class="px-4 sm:px-5 pt-4 pb-2 text-sm font-medium text-zinc-200">All signals</h2>
-              <ul class="divide-y divide-zinc-800/80">
-                <li v-for="s in sortedList" :key="s.id" @mouseenter="highlightId = s.id" @mouseleave="highlightId = null">
+              <h2 class="px-4 sm:px-5 pt-4 pb-1 text-sm font-medium text-zinc-200">All signals</h2>
+              <template v-for="g in listGroups" :key="g.title">
+              <p class="px-4 sm:px-5 pt-3 pb-1.5 text-[10px] uppercase tracking-widest"
+                :class="g.title === 'Key signals' ? 'text-zinc-300' : 'text-zinc-600'">{{ g.title }}</p>
+              <ul class="divide-y divide-zinc-800/80 border-t border-zinc-800/80">
+                <li v-for="s in g.items" :key="s.id" @mouseenter="highlightId = s.id" @mouseleave="highlightId = null">
                   <button type="button" class="w-full flex items-center gap-3 px-4 sm:px-5 py-3 text-left transition-colors"
                     :class="selected?.id === s.id ? 'bg-zinc-800/60' : highlightId === s.id ? 'bg-zinc-800/30' : 'hover:bg-zinc-800/30'"
                     :aria-pressed="selected?.id === s.id" @click="select(s)">
@@ -451,6 +464,7 @@ const sortedList = computed(() =>
                   </button>
                 </li>
               </ul>
+              </template>
             </section>
           </div>
 
@@ -475,6 +489,10 @@ const sortedList = computed(() =>
                   </span>
                   <span class="inline-flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-1 text-xs text-zinc-400">
                     <span aria-hidden="true">{{ detail.direction.glyph }}</span>{{ detail.direction.label }}
+                  </span>
+                  <span v-if="vis.get(detail.s.id)?.tier === 'Key'" class="inline-flex items-center gap-1.5 rounded-md border border-zinc-600 bg-zinc-800/60 px-2 py-1 text-xs text-zinc-100">
+                    <svg width="10" height="10" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.5" fill="none" stroke="#a1a1aa" stroke-opacity="0.6" stroke-width="2.5" /><circle cx="9" cy="9" r="4" fill="#e4e4e7" /></svg>
+                    Key signal
                   </span>
                   <span v-if="detail.stale.stale" class="inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-300">
                     Stale · {{ detail.stale.days }}d since last reading
