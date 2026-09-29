@@ -1,3 +1,14 @@
+<script setup>
+useSeoMeta({
+  title: 'Projects & Experience — Philip Benn',
+  description: 'Professional experience and featured web projects from Philip Benn, including Northline, Synthemo Creative, Fluxion, Elysium System, Hopeflo and NovelSpace.',
+  ogTitle: 'Projects & Experience — Philip Benn',
+  ogDescription: 'Creative Technologist building at the intersection of generative AI, 3D production, and full-stack development.',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+});
+</script>
+
 <template>
   <div
     v-motion
@@ -188,6 +199,14 @@
         class="motion-initial text-xl font-semibold text-zinc-100 mb-10">
         Featured Web Development Projects
       </h2>
+
+      <div
+        v-motion
+        :initial="{ opacity: 0, y: 20 }"
+        :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }"
+        class="motion-initial mb-6">
+        <NorthlineCard />
+      </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
