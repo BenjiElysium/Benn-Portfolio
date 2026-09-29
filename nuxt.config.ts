@@ -16,6 +16,7 @@ export default defineNuxtConfig({
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
     finnhubApiKey: process.env.FINNHUB_API_KEY || '', // server-only — never sent to browser
+    notionApiKey: process.env.NOTION_API_KEY || '',   // server-only, read-only integration scoped to AI Complex DBs
     public: {
       formspreeEndpoint: process.env.NUXT_PUBLIC_FORMSPREE_ENDPOINT || '',
     }

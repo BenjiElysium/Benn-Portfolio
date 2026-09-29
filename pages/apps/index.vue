@@ -57,6 +57,13 @@ const tools = [
     accent: '#6366F1',
   },
   {
+    slug: 'ai-complex',
+    name: 'AI Complex Signals',
+    desc: 'Lead-indicator board for the AI buildout: power, memory, leasing, credit and demand signals placed by how far they run ahead of NVIDIA revenue. Live from Notion.',
+    tags: ['Finance', 'Live Data', 'Data Viz'],
+    accent: '#fab219',
+  },
+  {
     slug: 'stock-analyzer',
     name: 'Stock Analyzer',
     desc: 'NVDA, GOOGL and BX valuation tool with live Finnhub prices, P/E and P/DE projection charts, DCF intrinsic floor calculator, and a personal watchlist.',

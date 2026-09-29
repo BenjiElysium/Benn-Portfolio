@@ -27,8 +27,8 @@ Philip Benn's personal portfolio site: Nuxt 3 + Vue 3 + Tailwind, deployed on Ve
 
 The finance apps follow a deliberate split:
 
-- `composables/*.js` contain **pure functions only — no Vue reactivity**. `usePortfolioSim.js` (Monte Carlo sim, seeded mulberry32 PRNG, named market scenarios), `useStockValuation.js` (P/E–P/DE valuation stats, DCF; config-object driven so adding a stock means a new config, not new math), `useProjectionChart.js` (Chart.js projection builder that updates charts in place to avoid flicker on live price ticks).
-- `components/apps/*.vue` own the reactive state and call the composable functions from `computed()`. `StockAnalyzer.vue` (~2700 lines) and `CompoundCalculator.vue` are the two main apps; each has a thin wrapper page in `pages/apps/`.
+- `composables/*.js` contain **pure functions only — no Vue reactivity**. `usePortfolioSim.js` (Monte Carlo sim, seeded mulberry32 PRNG, named market scenarios), `useStockValuation.js` (P/E–P/DE valuation stats, DCF; config-object driven so adding a stock means a new config, not new math), `useProjectionChart.js` (Chart.js projection builder that updates charts in place to avoid flicker on live price ticks), `useAiComplex.js` (lead-time lane layout, readings chart scales, status/staleness logic for the AI Complex board).
+- `components/apps/*.vue` own the reactive state and call the composable functions from `computed()`. `StockAnalyzer.vue` (~3500 lines), `CompoundCalculator.vue` and `AiComplex.vue` are the main apps; each has a thin wrapper page in `pages/apps/`. AI Complex charts are hand-rolled SVG laid out in real pixels (ResizeObserver), not Chart.js.
 
 Keep new simulation/valuation math in the composables, not in components, and keep it pure.
 
@@ -37,6 +37,7 @@ Keep new simulation/valuation math in the composables, not in components, and ke
 Nitro routes exist to keep API secrets server-side:
 
 - `finnhub/quote.get.ts` and `finnhub/metrics.get.ts` proxy Finnhub for live stock quotes, with an in-memory per-symbol cache (30 s TTL on quotes) and symbol-format validation. The Finnhub key lives in `runtimeConfig.finnhubApiKey` (server-only, never `public`).
+- `ai-complex/signals.get.ts` reads the "AI Complex" Signals + Readings databases from Notion (read-only integration, `runtimeConfig.notionApiKey`, 10 min cache, serves stale on failure). **Publishing is opt-in:** only signals with the `Public` checkbox ticked and a `Public Label` set are returned, and the response is an explicit field allowlist — Notes, value prose, source notes, working titles and Notion IDs must never be added to it. The underlying tracker is personal research; treat anything outside the allowlist as private.
 - `cloudinary/folder/[folder].ts` lists a Cloudinary folder via the Admin API (basic auth from env vars) and returns normalized `{ resources }` objects with scaled + original URLs, consumed by `CloudinaryMasonryGallery.vue`.
 
 ### Content
@@ -45,8 +46,8 @@ Blog posts are markdown in `content/blog/`, rendered through `@nuxt/content` at 
 
 ### Images
 
-Portfolio imagery is served from Cloudinary (`@nuxtjs/cloudinary`), not committed to the repo; galleries fetch image lists at runtime via the server route above.
+Portfolio imagery is served from Cloudinary (`@nuxtjs/cloudinary`), not committed to the repo; galleries fetch image lists at runtime via the server route above. `NorthlineCard.vue` (featured on the LP, Apps and Projects pages) uses Northline persona portraits mirrored to Cloudinary under `Northline/personas/`, and carries Northline's own brand (Newsreader serif via `font-serif`, orange accent) rather than the site's indigo.
 
 ## Environment variables
 
-Required in `.env` (see `nuxt.config.ts` runtimeConfig): `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `FINNHUB_API_KEY`, `NUXT_PUBLIC_FORMSPREE_ENDPOINT` (contact form). Only the Formspree endpoint is public; everything else must stay server-only.
+Required in `.env` (see `nuxt.config.ts` runtimeConfig): `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `FINNHUB_API_KEY`, `NOTION_API_KEY` (read-only Notion integration shared with only the two AI Complex databases), `NUXT_PUBLIC_FORMSPREE_ENDPOINT` (contact form). Only the Formspree endpoint is public; everything else must stay server-only.
