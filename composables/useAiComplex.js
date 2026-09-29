@@ -118,11 +118,45 @@ export function staleness(signal, todayIso) {
   return { stale: limit !== undefined && days > limit, days }
 }
 
-// ── Lead-time lanes ────────────────────────────────────────────
+// ── Arrival (latest reading + lead time) ───────────────────────
+// When a signal's latest reading should surface in NVIDIA's reported revenue.
+// Only as precise as the lead-time estimate; the UI says so.
+export function addMonths(iso, months) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1 + months, Math.min(d, 28))).toISOString().slice(0, 10)
+}
+
+export function arrivalDate(signal) {
+  const r = latestReading(signal)
+  if (!r || signal.leadMonths === null || signal.leadMonths === undefined) return null
+  return addMonths(r.date, signal.leadMonths)
+}
+
+// Earliest and latest arrival still ahead of today among watch-list signals,
+// for the summary line. Lead-0 signals are already in reported revenue.
+export function watchArrivalWindow(signals, todayIso) {
+  const dates = signals
+    .filter(s => s.status === 'Amber' || s.status === 'Red')
+    .map(arrivalDate).filter(d => d && d >= todayIso).sort()
+  return dates.length ? { from: dates[0], to: dates[dates.length - 1], count: dates.length } : null
+}
+
+// Half-year boundaries (Jan 1 / Jul 1) bracketing a date.
+const halfStart = iso => { const [y, m] = iso.split('-').map(Number); return `${y}-${m < 7 ? '01' : '07'}-01` }
+const halfAfter = iso => { const [y, m] = iso.split('-').map(Number); return m < 7 ? `${y}-07-01` : `${y + 1}-01-01` }
+
+// ── Lanes ──────────────────────────────────────────────────────
 // One lane per category, ordered upstream → downstream by average lead, so the
 // board reads left-to-right as the order signals arrive before chip revenue.
+// mode 'lead':    x = months ahead of revenue (24 → 0).
+// mode 'arrival': x = calendar date the latest reading should reach revenue;
+//                 signals with no reading get x = null (the UI fades them out).
+// Lane order and y never change between modes, so dots animate along x only.
 // `labelBand` reserves space above each lane's dots for its label (narrow screens).
-export function laneLayout(signals, { width, laneHeight = 48, labelBand = 0, margin = { top: 12, right: 24, bottom: 40, left: 168 } }) {
+export function laneLayout(signals, {
+  width, mode = 'lead', todayIso = null,
+  laneHeight = 48, labelBand = 0, margin = { top: 12, right: 24, bottom: 40, left: 168 },
+}) {
   const groups = new Map()
   for (const s of signals) {
     if (!groups.has(s.category)) groups.set(s.category, [])
@@ -133,30 +167,52 @@ export function laneLayout(signals, { width, laneHeight = 48, labelBand = 0, mar
     .map(([category, list]) => ({ category, list, avg: avgLead(list) }))
     .sort((a, b) => b.avg - a.avg || a.category.localeCompare(b.category))
 
-  const maxLead = Math.max(24, ...signals.map(s => s.leadMonths ?? 0))
   const plotW = Math.max(120, width - margin.left - margin.right)
-  const x = lead => margin.left + (1 - (lead ?? 0) / maxLead) * plotW
+  const maxLead = Math.max(24, ...signals.map(s => s.leadMonths ?? 0))
+  const xLead = lead => margin.left + (1 - (lead ?? 0) / maxLead) * plotW
+
+  let xOf, ticks, xOfDate = null, domain = null
+  if (mode === 'arrival') {
+    const arrivals = new Map(signals.map(s => [s.id, arrivalDate(s)]))
+    const dates = [...arrivals.values()].filter(Boolean).concat(todayIso ? [todayIso] : []).sort()
+    const t0 = dates.length ? halfStart(dates[0]) : todayIso
+    const t1 = dates.length ? halfAfter(dates[dates.length - 1]) : todayIso
+    const T0 = Date.parse(t0), T1 = Date.parse(t1)
+    xOfDate = iso => margin.left + ((Date.parse(iso) - T0) / (T1 - T0 || 1)) * plotW
+    xOf = s => (arrivals.get(s.id) ? xOfDate(arrivals.get(s.id)) : null)
+    ticks = []
+    for (let d = t0; d <= t1; d = halfAfter(d)) ticks.push({ value: d, label: formatDate(d, { short: true }), x: xOfDate(d) })
+    domain = { t0, t1 }
+  } else {
+    xOf = s => xLead(s.leadMonths)
+    ticks = [24, 18, 12, 9, 6, 3, 0].filter(t => t <= maxLead).map(t => ({ value: t, label: String(t), x: xLead(t) }))
+  }
 
   const dots = []
   lanes.forEach((lane, i) => {
     const top = margin.top + i * laneHeight
     const cy = top + labelBand + (laneHeight - labelBand) / 2
-    // Signals sharing a lead in one lane fan out vertically instead of overlapping.
+    // Signals sharing an x in one lane fan out vertically instead of overlapping.
     const byX = new Map()
     for (const s of [...lane.list].sort((a, b) => (b.leadMonths ?? 0) - (a.leadMonths ?? 0))) {
-      const key = Math.round(x(s.leadMonths) / 14)
-      const n = byX.get(key) ?? 0
-      byX.set(key, n + 1)
-      const offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 13
-      dots.push({ signal: s, cx: x(s.leadMonths), cy: cy + offset, lane: i })
+      const x = xOf(s)
+      // Unplaced (arrival mode, no reading): hold the lead-time spot while faded out.
+      const cx = x ?? xLead(s.leadMonths)
+      let offset = 0
+      if (x !== null) {
+        const key = Math.round(cx / 14)
+        const n = byX.get(key) ?? 0
+        byX.set(key, n + 1)
+        offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 13
+      }
+      dots.push({ signal: s, cx, cy: cy + offset, lane: i, placed: x !== null })
     }
     lane.y = cy
     lane.top = top
   })
 
-  const ticks = [24, 18, 12, 9, 6, 3, 0].filter(t => t <= maxLead).map(t => ({ value: t, x: x(t) }))
   const height = margin.top + lanes.length * laneHeight + margin.bottom
-  return { lanes, dots, ticks, height, margin, plotRight: margin.left + plotW }
+  return { mode, lanes, dots, ticks, height, margin, plotLeft: margin.left, plotRight: margin.left + plotW, xOfDate, domain }
 }
 
 // SVG path for a status shape centered at (cx, cy) with radius r.
