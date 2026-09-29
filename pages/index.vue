@@ -329,6 +329,24 @@ const cardVisible = (delay = 0) => ({
       </div>
     </section>
 
+    <!-- ── Northline feature ─────────────────────────────────── -->
+    <section class="mb-24">
+      <h2
+        v-motion
+        :initial="{ opacity: 0, y: 28, filter: 'blur(6px)' }"
+        :visible="{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 700, ease: 'easeOut' } }"
+        class="motion-initial text-2xl font-semibold text-zinc-100 mb-10">
+        Now Building
+      </h2>
+      <div
+        v-motion
+        :initial="{ opacity: 0, y: 36, filter: 'blur(10px)' }"
+        :visible="{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 750, ease: 'easeOut' } }"
+        class="motion-initial">
+        <NorthlineCard />
+      </div>
+    </section>
+
     <!-- ── Portfolio CGI ─────────────────────────────────────── -->
     <PortfolioImageScroll
       :media-assets="cgiAssets"

@@ -59,7 +59,7 @@ const tools = [
   {
     slug: 'stock-analyzer',
     name: 'Stock Analyzer',
-    desc: 'NVDA and BX valuation tool with live Finnhub prices, P/E and P/DE projection charts, DCF intrinsic floor calculator, and a personal watchlist.',
+    desc: 'NVDA, GOOGL and BX valuation tool with live Finnhub prices, P/E and P/DE projection charts, DCF intrinsic floor calculator, and a personal watchlist.',
     tags: ['Finance', 'Live Data', 'Valuation'],
     accent: '#22c55e',
   },
@@ -71,9 +71,14 @@ const tools = [
 
     <div class="mb-12">
       <h1 class="text-3xl font-medium text-zinc-100 mb-3">Apps</h1>
-      <p class="text-zinc-400 text-base leading-relaxed max-xl">
+      <p class="text-zinc-400 text-base leading-relaxed max-w-xl">
         Interactive tools I've built for exploration and use. Each one is a working instrument, not a demo — built on Python, FastAPI, Next.js, Supabase, and more.
         </p>
+    </div>
+
+    <!-- Featured -->
+    <div class="mb-5">
+      <NorthlineCard heading-tag="h2" />
     </div>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
