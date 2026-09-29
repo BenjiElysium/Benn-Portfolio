@@ -185,7 +185,8 @@ export const BX_CONFIG = {
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
   priceFallback: 113.70,
   historicalMultiple: [
-    { label: 'Current', value: 27.36 },
+    { label: 'Q2 2026', value: 19.13 },  // $117.67 close ÷ 6.15 LTM DE
+    { label: 'Q1 2026', value: 19.69 },  // $114.99 close ÷ 5.84 LTM DE
     { label: 'Q4 2025', value: 27.36 },
     { label: 'Q3 2025', value: 27.64 },
     { label: 'Q2 2025', value: 30.96 },
@@ -301,13 +302,27 @@ export const GOOGL_CONFIG = {
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
   priceFallback: 335.95,
   // Canonical completed-quarter TTM P/E series (chronological, dated) — see NVDA note.
+  // Rebuilt 2026-09-29 at Alphabet's own quarter ends: quarter-end close (Yahoo
+  // Finance; last trading day on or before the date) ÷ TTM diluted EPS, the sum
+  // of the last four quarters' EPS from Finnhub's quarterly series (matches the
+  // earnings releases). Q1 and Q2 2026 exclude the unrealized equity gains
+  // Alphabet stated ($2.35 and $6.26 a share), the same basis as ttmEps; earlier
+  // quarters are as filed, as baseValue is. Check: TTM at 2025-12-31 = 10.81
+  // (baseValue) and at 2026-06-30 = 11.30 (ttmEps). Replaces six points of
+  // unknown provenance dated to NVIDIA's quarter-end months.
   historicalMultiple: [
-    { label: 'Oct 2023', date: '2023-10-31', value: 27.05 },
-    { label: 'Jan 2024', date: '2024-01-31', value: 26.82 },
-    { label: 'Apr 2024', date: '2024-04-30', value: 25.10 },
-    { label: 'Jul 2024', date: '2024-07-31', value: 22.03 },
-    { label: 'Oct 2024', date: '2024-10-31', value: 23.55 },
-    { label: 'Jan 2025', date: '2025-01-31', value: 22.48 },
+    { label: 'Sep 2023', date: '2023-09-30', value: 25.09 },  // $130.86 ÷ 5.22
+    { label: 'Dec 2023', date: '2023-12-31', value: 24.06 },  // $139.69 ÷ 5.81
+    { label: 'Mar 2024', date: '2024-03-31', value: 23.15 },  // $150.93 ÷ 6.52
+    { label: 'Jun 2024', date: '2024-06-30', value: 26.13 },  // $182.15 ÷ 6.97
+    { label: 'Sep 2024', date: '2024-09-30', value: 22.00 },  // $165.85 ÷ 7.54
+    { label: 'Dec 2024', date: '2024-12-31', value: 23.95 },  // $189.30 ÷ 7.91
+    { label: 'Mar 2025', date: '2025-03-31', value: 17.52 },  // $154.64 ÷ 8.83
+    { label: 'Jun 2025', date: '2025-06-30', value: 19.06 },  // $176.23 ÷ 9.25
+    { label: 'Sep 2025', date: '2025-09-30', value: 24.32 },  // $243.10 ÷ 10.00
+    { label: 'Dec 2025', date: '2025-12-31', value: 28.97 },  // $313.00 ÷ 10.81
+    { label: 'Mar 2026', date: '2026-03-31', value: 26.73 },  // $287.56 ÷ 10.76
+    { label: 'Jun 2026', date: '2026-06-30', value: 31.62 },  // $357.37 ÷ 11.30
   ],
   sliderConfig: {
     sections: [

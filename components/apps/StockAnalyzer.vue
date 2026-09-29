@@ -129,6 +129,10 @@ const BX_LATEST_DE_SOURCE = {
   source: 'Blackstone Q2 2026 earnings release',
 }
 const BX_HIST_PDE = [
+  // Quarter-end close (Yahoo Finance) ÷ LTM DE/share from that quarter's release:
+  // Q2 2026 $117.67 ÷ 6.15, Q1 2026 $114.99 ÷ 5.84.
+  { label: 'Q2 2026', value: 19.13 },
+  { label: 'Q1 2026', value: 19.69 },
   { label: 'Q4 2025', value: 27.36 },
   { label: 'Q3 2025', value: 27.64 },
   { label: 'Q2 2025', value: 30.96 },
