@@ -1,7 +1,9 @@
 <!-- components/apps/AiComplexReadings.vue -->
 <!-- One readings chart for a single unit: a line per series, the signal's
      amber/red thresholds as reference lines, guided (future-dated) points
-     hollow on a dashed leg. Hovering or focusing a point shows its value. -->
+     hollow on a dashed leg. Hovering or focusing a point shows its value.
+     The parent keys this per signal, so each selection re-mounts it and the
+     draw-on animation replays. -->
 <script setup>
 import { readingChartModel, formatValue, formatDate, unitSuffix } from '~/composables/useAiComplex'
 
@@ -43,7 +45,7 @@ const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
       <li v-for="p in [...points].sort((a, b) => b.value - a.value)" :key="p.series" class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3">
         <span class="text-[12px] text-zinc-400 truncate">{{ p.series }}</span>
         <span class="flex items-center gap-2 min-w-0">
-          <span class="h-2.5 rounded-r bg-[#3987e5]" :style="{ width: `${Math.max(2, (Math.abs(p.value) / barMax) * 78)}%` }" />
+          <span class="ac-grow h-2.5 rounded-r bg-[#3987e5]" :style="{ width: `${Math.max(2, (Math.abs(p.value) / barMax) * 78)}%` }" />
           <span class="text-[12px] font-medium text-zinc-200 tabular-nums whitespace-nowrap">{{ formatValue(p.value, group.unit) }}</span>
         </span>
       </li>
@@ -89,10 +91,10 @@ const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
 
       <!-- series -->
       <g v-for="s in model.series" :key="s.name">
-        <path v-if="s.line" :d="s.line" fill="none" :stroke="s.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-        <path v-if="s.guideLine" :d="s.guideLine" fill="none" :stroke="s.color" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.7" />
+        <path v-if="s.line" :d="s.line" pathLength="1" class="ac-draw" fill="none" :stroke="s.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        <path v-if="s.guideLine" :d="s.guideLine" class="ac-late" fill="none" :stroke="s.color" stroke-width="1.5" stroke-dasharray="3 3" stroke-opacity="0.7" />
         <g v-for="p in s.pts" :key="p.date + p.value"
-          tabindex="0" class="cursor-default focus:outline-none"
+          tabindex="0" class="ac-pop cursor-default focus:outline-none"
           :aria-label="`${s.name}, ${formatDate(p.date)}: ${p.display || formatValue(p.value, group.unit)}${p.guidance ? ' (guided)' : ''}`"
           @pointerenter="hover = { p, series: s }" @pointerleave="hover = null"
           @focus="hover = { p, series: s }" @blur="hover = null">
@@ -101,7 +103,7 @@ const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
             :fill="p.guidance ? '#141417' : s.color" :stroke="p.guidance ? s.color : '#141417'" stroke-width="2" />
         </g>
         <!-- endpoint label only -->
-        <text :x="s.end.cx + 9" :y="s.end.cy" dy="0.32em" class="fill-zinc-300 text-[11px] font-medium tabular-nums"
+        <text :x="s.end.cx + 9" :y="s.end.cy" dy="0.32em" class="ac-late fill-zinc-300 text-[11px] font-medium tabular-nums"
           v-if="!hover && model.thresholds.every(t => Math.abs(t.y - s.end.cy) > 10)">
           {{ formatValue(s.end.value, group.unit) }}
         </text>
@@ -119,3 +121,24 @@ const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
     </div>
   </figure>
 </template>
+
+<style scoped>
+/* Line draws left→right, then points and labels arrive. pathLength="1"
+   normalizes the dash so the same keyframes fit any path. */
+.ac-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ac-draw 0.8s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+@keyframes ac-draw { to { stroke-dashoffset: 0; } }
+.ac-pop { opacity: 0; animation: ac-in 0.3s ease-out 0.45s forwards; }
+.ac-late { opacity: 0; animation: ac-in 0.3s ease-out 0.75s forwards; }
+@keyframes ac-in { to { opacity: 1; } }
+.ac-grow { transform-origin: left; animation: ac-grow 0.6s cubic-bezier(0.33, 1, 0.68, 1); }
+@keyframes ac-grow { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-draw { animation: none; stroke-dashoffset: 0; }
+  .ac-pop, .ac-late { animation: none; opacity: 1; }
+  .ac-grow { animation: none; }
+}
+</style>
