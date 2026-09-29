@@ -402,9 +402,13 @@ const gH5 = computed({
   },
   set: (v) => { /* read-only; derived from staged growth config */ }
 })
+const gDiscountRate = computed(() => {
+  const capm = TICKER_CONFIG.GOOGL.capm
+  return capm ? capm.rf + capm.beta * capm.erp : TICKER_CONFIG.GOOGL.discountRateOverride
+})
 const gD = computed({
-  get: () => +(TICKER_CONFIG.GOOGL.discountRateOverride * 100).toFixed(2),
-  set: (v) => { /* read-only; discount rate is hardcoded fallback */ }
+  get: () => +(gDiscountRate.value * 100).toFixed(2),
+  set: (v) => { /* read-only; CAPM from config */ }
 })
 const gBaseEPS = computed({
   get: () => googlState.baseValue ?? TICKER_CONFIG.GOOGL.baseValue,
@@ -643,6 +647,10 @@ function nSetTerminalYears(v) {
   const y = Math.round(+v)
   if (Number.isFinite(y) && y >= 1 && y <= 50 && nvdaState.terminal) nvdaState.terminal.years = y
 }
+function nSetPerpetualGrowth(v) {
+  const g = +v
+  if (Number.isFinite(g) && g >= 0 && g <= 10 && nvdaState.terminal) nvdaState.terminal.perpetualGrowth = g / 100
+}
 
 // Value path rows: seed years are consensus INPUTS, the rest are model output.
 const nValuePath = computed(() => {
@@ -665,6 +673,9 @@ const nDcfBreakdown = computed(() => {
     mult: full.mult,
     terminalNumerator: full.terminalNumerator,
     pvTerminal: full.pvTerminal,
+    pvFade: full.pvFade,
+    pvPerpetual: full.pvPerpetual,
+    perpetualDiverges: full.perpetualDiverges,
     pvEarnings: full.intrinsic - full.pvTerminal,
     floor: full.intrinsic,
     yr5EPS: full.valuePath[4] ?? 0,
@@ -1062,13 +1073,13 @@ const g2Range    = computed(() => `${dlr(gP2l.value)}\u2013${dlr(gP2h.value)}`)
 const g1RangeSub = computed(() => `${pct((gP1l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP1h.value - googlPrice.value) / googlPrice.value)}`)
 const g2RangeSub = computed(() => `${pct((gP2l.value - googlPrice.value) / googlPrice.value)} to ${pct((gP2h.value - googlPrice.value) / googlPrice.value)}`)
 
-// GOOGL Staged DCF with fixed discount rate (no CAPM source yet)
+// GOOGL Staged DCF, CAPM discount rate from config (read-only in the UI)
 const gDcfFull = computed(() => computeStagedDCF({
   baseValue: TICKER_CONFIG.GOOGL.baseValue,
   seedValues: TICKER_CONFIG.GOOGL.seedValues,
   growthStages: TICKER_CONFIG.GOOGL.growthStages,
   terminal: TICKER_CONFIG.GOOGL.terminal,
-  discountRate: TICKER_CONFIG.GOOGL.discountRateOverride,
+  discountRate: gDiscountRate.value,
 }))
 
 const gFloor = computed(() => gDcfFull.value.intrinsic)
@@ -1086,6 +1097,8 @@ const gDcfBreakdown = computed(() => {
     mult: full.mult,
     terminalNumerator: full.terminalNumerator,
     pvTerminal: full.pvTerminal,
+    pvFade: full.pvFade,
+    pvPerpetual: full.pvPerpetual,
     pvEarnings: full.intrinsic - full.pvTerminal,
     floor: full.intrinsic,
     yr5EPS: full.valuePath[4] ?? 0,
@@ -2354,10 +2367,10 @@ watch(watchlist, () => {
           </div>
           <div class="metric-card metric-card-help">
             <div class="mc-head">
-              <p class="mc-label">Two-phase DCF floor</p>
-              <button type="button" class="help-dot" aria-label="Explain two-phase DCF floor">?</button>
+              <p class="mc-label">Staged DCF floor</p>
+              <button type="button" class="help-dot" aria-label="Explain staged DCF floor">?</button>
               <div class="metric-help" role="tooltip">
-                Present value estimate: {{ dlr(nDcfBreakdown.pvEarnings) }} discounted EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} discounted terminal value.
+                Present value estimate: {{ dlr(nDcfBreakdown.pvEarnings) }} discounted EPS for years 1&ndash;10 + {{ dlr(nDcfBreakdown.pvTerminal) }} discounted value beyond year 10, at {{ nD }}%.
               </div>
             </div>
             <p class="mc-value">{{ dlr(nFloor) }}</p>
@@ -2548,11 +2561,11 @@ watch(watchlist, () => {
           <p class="note">Dotted lines extrapolate using projection growth g and the same P/E range &mdash; not a forecast.</p>
         </div>
 
-        <!-- ── Two-phase DCF card ─────────────────────────────── -->
+        <!-- ── Staged DCF card ──────────────────────────────────── -->
         <div class="card">
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
-          <div class="insight">This is a present-value estimate, not a price target. It grows consensus EPS for 2 years, then applies staged growth rates for 8 years, discounts those future dollars back at {{ nD }}%, and derives terminal value using the Rx formula.</div>
-          <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(nDcfBreakdown.floor) }}.</div>
+          <div class="insight">This is a present-value estimate, not a price target. It takes consensus EPS for 2 years, applies staged growth rates for 8 more, then values everything after year 10 as a {{ nTerminal.years }}-year fade at {{ +(nTerminal.growth * 100).toFixed(1) }}% (Rx formula) followed by growth of {{ +((nTerminal.perpetualGrowth ?? 0) * 100).toFixed(1) }}% a year in perpetuity &mdash; all discounted back at {{ nD }}%.</div>
+          <div class="insight">Current breakdown: {{ dlr(nDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(nDcfBreakdown.pvFade) }} from the fade years + {{ dlr(nDcfBreakdown.pvPerpetual) }} from the perpetuity = {{ dlr(nDcfBreakdown.floor) }}.</div>
           <div class="insight" :class="nDcfImpliedRev.flagged ? 'rev-sanity-warning' : ''">
             <strong>Yr-10 implied revenue:</strong> {{ dlr(nDcfImpliedRev.value / 1e12) }}T
             <span v-if="nDcfImpliedRev.flagged" class="rev-sanity-flag" title="This growth path implies annual revenue larger than the entire current global semiconductor industry. Confirm this is intended.">
@@ -2586,8 +2599,10 @@ watch(watchlist, () => {
               <div class="mi-title">Terminal value</div>
               <div class="mi-row"><label>Terminal growth</label><input type="number" step="0.5" min="0" max="30" :value="+(nTerminal.growth * 100).toFixed(1)" @change="e => nSetTerminalGrowth(e.target.value)" class="mi-input" /><span>%</span></div>
               <div class="mi-row"><label>Terminal years</label><input type="number" step="1" min="1" max="50" :value="nTerminal.years" @change="e => nSetTerminalYears(e.target.value)" class="mi-input" /><span>&nbsp;</span></div>
-              <div class="mi-note">Rx {{ nDcfBreakdown.Rx.toFixed(5) }} &middot; derived multiple {{ nDcfBreakdown.mult.toFixed(3) }} &middot; terminal {{ (nTerminalPercent * 100).toFixed(0) }}% of intrinsic</div>
+              <div class="mi-row"><label>Then, in perpetuity</label><input type="number" step="0.5" min="0" max="10" :value="+((nTerminal.perpetualGrowth ?? 0) * 100).toFixed(1)" @change="e => nSetPerpetualGrowth(e.target.value)" class="mi-input" /><span>%</span></div>
+              <div class="mi-note">Rx {{ nDcfBreakdown.Rx.toFixed(5) }} &middot; derived multiple {{ nDcfBreakdown.mult.toFixed(3) }} &middot; beyond year 10 is {{ (nTerminalPercent * 100).toFixed(0) }}% of intrinsic</div>
               <div v-if="nTerminalDiverges" class="mi-note mi-warn">⚠️ Terminal growth ≥ discount rate — terminal value grows with each added year. Confirm this is intended.</div>
+              <div v-if="nDcfBreakdown.perpetualDiverges" class="mi-note mi-warn">⚠️ Perpetual growth ≥ discount rate — the perpetuity has no finite value and is left out.</div>
             </div>
           </div>
 
@@ -2721,7 +2736,8 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ nD }}%). Edit rf, erp, and beta in the model inputs.</span></div>
           <div class="gterm"><span class="gterm-name">Scenario preset</span><span class="gterm-def">A complete model configuration &mdash; seed years, growth stages, terminal assumptions, and multiple band. Bear, Base, and Bull; the conviction banner grades the live multiple against the active scenario's band.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum a stock should be worth based on DCF. A margin-of-safety check, not a price target.</span></div>
-          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">The business's value beyond the projection years, from the Rx formula: Rx = (1 + terminal growth) &divide; (1 + d); multiple = Rx &times; (Rx<sup>years</sup> &minus; 1) &divide; (Rx &minus; 1) &mdash; not a fixed exit multiple.</span></div>
+          <div class="gterm"><span class="gterm-name">Terminal value</span><span class="gterm-def">The business's value beyond the 10 projection years, in two parts. First a fade period from the Rx formula: Rx = (1 + terminal growth) &divide; (1 + d); multiple = Rx &times; (Rx<sup>years</sup> &minus; 1) &divide; (Rx &minus; 1). Then a perpetuity: the last fade-year EPS &times; (1 + perpetual growth) &divide; (d &minus; perpetual growth), discounted to today. Not a fixed exit multiple.</span></div>
+          <div class="gterm"><span class="gterm-name">Discount rate</span><span class="gterm-def">CAPM: rf + beta &times; equity risk premium. Beta is Blume-adjusted (0.67 &times; raw 2.22 + 0.33 = 1.82), the standard correction for raw betas drifting toward 1.</span></div>
         </div>
       </div>
 
@@ -2756,7 +2772,7 @@ watch(watchlist, () => {
             <p class="mc-sub" v-else><span class="skeleton-line skeleton-sm" /></p>
           </div>
           <div class="metric-card">
-            <p class="mc-label">10yr intrinsic floor</p>
+            <p class="mc-label">Staged DCF floor</p>
             <p class="mc-value">{{ dlr(bFloor) }}</p>
             <p class="mc-sub" v-if="bPriceReady" :class="colCls(bVsFloor)">{{ bVsFloor >= 0 ? 'Price BELOW floor' : 'Price above floor' }}</p>
             <p class="mc-sub" v-else-if="bPriceState === 'error'">price unavailable</p>
@@ -2851,10 +2867,11 @@ watch(watchlist, () => {
 
         <!-- BX DCF -->
         <div class="card">
-          <div class="card-title">20yr staged DCF (DpS-based) &mdash; intrinsic floor</div>
-          <div class="insight">This uses Distributions per Share (not DE) and applies the Rx-derived terminal formula over 20 years. Terminal growth (12%) exceeds discount rate (10.78%), so terminal value grows with each additional year &mdash; this is a deliberate modeling choice, not an error.</div>
-          <div class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
-            <strong>⚠️ Divergent terminal:</strong> Terminal value represents ~{{ (bTerminalPercent * 100).toFixed(0) }}% of intrinsic floor. The 20-year terminal count is a material assumption; adjust it to stress-test the floor.
+          <div class="card-title">Staged DCF (DpS-based) &mdash; intrinsic floor</div>
+          <div class="insight">This uses Distributions per Share (not DE): consensus DpS for 2 years, {{ TICKER_CONFIG.BX.growthStages.map(s => `${s.years} years at ${+(s.rate * 100).toFixed(1)}%`).join(', then ') }}, then a {{ TICKER_CONFIG.BX.terminal.years }}-year fade at {{ +(TICKER_CONFIG.BX.terminal.growth * 100).toFixed(1) }}% (Rx formula) followed by growth of {{ +(TICKER_CONFIG.BX.terminal.perpetualGrowth * 100).toFixed(1) }}% a year in perpetuity &mdash; all discounted back at {{ bD }}%.</div>
+          <div class="insight">Current breakdown: {{ dlr(bDcfFull.intrinsic - bDcfFull.pvTerminal) }} from discounted year 1&ndash;10 DpS + {{ dlr(bDcfFull.pvFade) }} from the fade years + {{ dlr(bDcfFull.pvPerpetual) }} from the perpetuity = {{ dlr(bFloor) }}. Value beyond year 10 is {{ (bTerminalPercent * 100).toFixed(0) }}% of the floor.</div>
+          <div v-if="bTerminalDiverges" class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
+            <strong>⚠️ Divergent terminal:</strong> Fade growth ({{ +(TICKER_CONFIG.BX.terminal.growth * 100).toFixed(1) }}%) is at or above the discount rate ({{ bD }}%), so each added fade year adds value. The fade length is a material assumption; lower beta or rf to see this.
           </div>
 
           <!-- CAPM inputs -->
@@ -2879,7 +2896,7 @@ watch(watchlist, () => {
             <div class="tcard"><div class="tlabel">Yr 3 DE/share</div><div class="tprice">{{ dlr(bDeYears[3]) }}</div><div class="tret">{{ pct(Math.pow(1 + bG / 100, 3) - 1) }} cumulative growth</div></div>
             <div class="tcard"><div class="tlabel">Yr 3 distribution</div><div class="tprice">{{ dlr(bDistYears[3]) }}</div><div class="tret" v-if="bPriceReady">{{ bYr3Yield.toFixed(1) }}% yield on today's price</div><div class="tret" v-else-if="bPriceState === 'error'">price unavailable</div><div class="tret" v-else><span class="skeleton-line skeleton-sm" /></div></div>
             <div class="tcard"><div class="tlabel">Yr 1 yield</div><div class="tprice" v-if="bPriceReady">{{ (bYld1 * 100).toFixed(2) }}%</div><div class="tprice" v-else-if="bPriceState === 'error'">—</div><div class="tprice" v-else><span class="skeleton-line" /></div><div class="tret">{{ dlr(bPay / 100 * bDe1) }}/share</div></div>
-            <div class="tcard"><div class="tlabel">10yr intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div></div>
+            <div class="tcard"><div class="tlabel">DCF intrinsic floor</div><div class="tprice">{{ dlr(bFloor) }}</div></div>
           </div>
           <div class="chart-wrap"><canvas ref="bDeCanvas" /></div>
           <div class="chart-legend">
@@ -2936,14 +2953,14 @@ watch(watchlist, () => {
         </button>
         <div class="glossary-body" :class="{ open: bxGlossaryOpen }">
           <div class="gterm"><span class="gterm-name">DE (distributable earnings)</span><span class="gterm-def">The cash BX actually generates and can pay out. All Wall Street analysts use DE when valuing Blackstone.</span></div>
-          <div class="gterm"><span class="gterm-name">DpS (distributions per share)</span><span class="gterm-def">The cash Blackstone actually pays out to shareholders, per share. Equal to DE &times; payout ratio &mdash; DE is what it earns; DpS is what it pays. The 20yr DCF discounts DpS, not DE.</span></div>
+          <div class="gterm"><span class="gterm-name">DpS (distributions per share)</span><span class="gterm-def">The cash Blackstone actually pays out to shareholders, per share. Equal to DE &times; payout ratio &mdash; DE is what it earns; DpS is what it pays. The staged DCF discounts DpS, not DE.</span></div>
           <div class="gterm"><span class="gterm-name">P/DE multiple</span><span class="gterm-def">Price-to-distributable-earnings &mdash; BX's equivalent of a P/E ratio.</span></div>
-          <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ bD }}%). Edit rf, erp, and beta in the DCF card.</span></div>
+          <div class="gterm"><span class="gterm-name">CAPM</span><span class="gterm-def">Capital Asset Pricing Model &mdash; sets the discount rate from market inputs: d = risk-free rate + beta &times; equity risk premium (currently {{ bD }}%). Beta is Blume-adjusted (0.67 &times; raw 1.56 + 0.33 = 1.38). Edit rf, erp, and beta in the DCF card.</span></div>
           <div class="gterm"><span class="gterm-name">Payout ratio</span><span class="gterm-def">The percentage of DE paid out to shareholders as cash distributions. BX historically pays ~85%.</span></div>
           <div class="gterm"><span class="gterm-name">Distribution</span><span class="gterm-def">Cash paid regularly to shareholders. Equal to DE &times; payout ratio. The yield component of total return.</span></div>
           <div class="gterm"><span class="gterm-name">Total return</span><span class="gterm-def">Price appreciation plus yield (distributions received). For BX, yield is a meaningful part of the investment case.</span></div>
           <div class="gterm"><span class="gterm-name">Buy zone (&lt;20&times;)</span><span class="gterm-def">Historically, P/DE below 20&times; has been a reliable re-entry signal. It has occurred in {{ bxHistBelowBuyZone }} of {{ bxQuarterCount }} completed quarters.</span></div>
-          <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future distributions per share (DpS) discounted to today's dollars.</span></div>
+          <div class="gterm"><span class="gterm-name">DCF intrinsic floor</span><span class="gterm-def">The minimum BX should be worth based on future distributions per share (DpS) discounted to today's dollars: 10 projected years, a fade period, then a perpetuity.</span></div>
         </div>
       </div>
 
@@ -2979,10 +2996,10 @@ watch(watchlist, () => {
           </div>
           <div class="metric-card metric-card-help">
             <div class="mc-head">
-              <p class="mc-label">Two-phase DCF floor</p>
-              <button type="button" class="help-dot" aria-label="Explain two-phase DCF floor">?</button>
+              <p class="mc-label">Staged DCF floor</p>
+              <button type="button" class="help-dot" aria-label="Explain staged DCF floor">?</button>
               <div class="metric-help" role="tooltip">
-                Present value estimate: {{ dlr(gDcfBreakdown.pvEarnings) }} discounted EPS + {{ dlr(gDcfBreakdown.pvTerminal) }} discounted terminal value.
+                Present value estimate: {{ dlr(gDcfBreakdown.pvEarnings) }} discounted EPS for years 1&ndash;10 + {{ dlr(gDcfBreakdown.pvTerminal) }} discounted value beyond year 10, at {{ gD }}%.
               </div>
             </div>
             <p class="mc-value">{{ dlr(gFloor) }}</p>
@@ -3070,13 +3087,12 @@ watch(watchlist, () => {
         <!-- ── Staged DCF card ─────────────────────────────── -->
         <div class="card">
           <div class="card-title">Staged DCF &mdash; intrinsic floor</div>
-          <div class="insight">This is a present-value estimate, not a price target. It grows EPS in two stages (20% for 5 years, then 12% for 5 years), discounts those future dollars back at {{ gD }}%, and derives terminal value using the Rx formula (not a fixed multiple).</div>
-          <div class="insight">Discount rate: <strong>{{ gD }}% — fixed override, read-only.</strong> GOOGL has no CAPM inputs yet; a beta must be derived before switching from the override.</div>
-          <div class="insight">⚠️ <strong>Economics changed from the previous fixed-10x method.</strong> Floor shifted from $341.65 to {{ dlr(gFloor) }} (+5.7%) due to the terminal method. Terminal value is now derived from the Rx formula rather than hardcoded. Growth inputs are provisional estimates and have not yet been through a full analysis.</div>
+          <div class="insight">This is a present-value estimate, not a price target. It grows EPS in two stages (20% for 5 years, then 12% for 5 years), then values everything after year 10 as a {{ TICKER_CONFIG.GOOGL.terminal.years }}-year fade at {{ +(TICKER_CONFIG.GOOGL.terminal.growth * 100).toFixed(1) }}% (Rx formula) followed by growth of {{ +(TICKER_CONFIG.GOOGL.terminal.perpetualGrowth * 100).toFixed(1) }}% a year in perpetuity &mdash; all discounted back at {{ gD }}%.</div>
+          <div class="insight">Discount rate: <strong>{{ gD }}%</strong> from CAPM &mdash; {{ (TICKER_CONFIG.GOOGL.capm.rf * 100).toFixed(2) }}% risk-free + beta {{ TICKER_CONFIG.GOOGL.capm.beta.toFixed(2) }} &times; {{ (TICKER_CONFIG.GOOGL.capm.erp * 100).toFixed(1) }}% equity risk premium. Beta is Blume-adjusted from a raw 5-year beta of 1.23. Growth inputs are provisional estimates and have not yet been through a full analysis.</div>
           <div v-if="gTerminalDiverges" class="insight" style="background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
             <strong>⚠️ Divergent terminal:</strong> Terminal growth ({{ (TICKER_CONFIG.GOOGL.terminal.growth * 100).toFixed(1) }}%) exceeds discount rate ({{ gD }}%), so terminal value grows with each additional year. Terminal value represents ~{{ (gTerminalPercent * 100).toFixed(0) }}% of intrinsic floor.
           </div>
-          <div class="insight">Current breakdown: {{ dlr(gDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(gDcfBreakdown.pvTerminal) }} from discounted terminal value = {{ dlr(gDcfBreakdown.floor) }}.</div>
+          <div class="insight">Current breakdown: {{ dlr(gDcfBreakdown.pvEarnings) }} from discounted year 1&ndash;10 EPS + {{ dlr(gDcfBreakdown.pvFade) }} from the fade years + {{ dlr(gDcfBreakdown.pvPerpetual) }} from the perpetuity = {{ dlr(gDcfBreakdown.floor) }}.</div>
           <div class="targets">
             <div class="tcard">
               <div class="tlabel">Intrinsic floor</div>
@@ -3176,7 +3192,7 @@ watch(watchlist, () => {
           <div class="gterm"><span class="gterm-name">Forward EPS</span><span class="gterm-def">Analyst consensus estimate of EPS over the next 12 months.</span></div>
           <div class="gterm"><span class="gterm-name">P/E multiple</span><span class="gterm-def">Price-to-earnings &mdash; how much investors pay per $1 of earnings. GOOGL's range is more stable than NVDA's (20&ndash;35&times; for most of the post-2017 period).</span></div>
           <div class="gterm"><span class="gterm-name">Staged DCF</span><span class="gterm-def">A discounted cash flow model with two staged growth phases (20% for 5 years, then 12% for 5 years), discounted at rate d, with an Rx-derived terminal value rather than a fixed exit multiple.</span></div>
-          <div class="gterm"><span class="gterm-name">Discount rate d</span><span class="gterm-def">Fixed at {{ gD }}% as a read-only override &mdash; GOOGL has no CAPM inputs yet because no beta has been derived for it.</span></div>
+          <div class="gterm"><span class="gterm-name">Discount rate d</span><span class="gterm-def">{{ gD }}% from CAPM: rf + beta &times; equity risk premium. Beta is Blume-adjusted (0.67 &times; raw 1.23 + 0.33 = 1.15), the standard correction for raw betas drifting toward 1. Read-only here.</span></div>
           <div class="gterm"><span class="gterm-name">TTM P/E</span><span class="gterm-def">Price divided by trailing-twelve-month EPS (excluding unrealized equity-stake gains) &mdash; the live &ldquo;Current&rdquo; point on the historical chart.</span></div>
           <div class="gterm"><span class="gterm-name">Fiscal year end</span><span class="gterm-def">December 31 &mdash; unlike NVDA (late January), GOOGL's fiscal year aligns with the calendar year. No offset needed between EPS period and stock return period.</span></div>
           <div class="gterm"><span class="gterm-name">Intrinsic floor</span><span class="gterm-def">The minimum GOOGL should be worth based on future EPS discounted to today's dollars. A margin-of-safety check, not a price target.</span></div>
