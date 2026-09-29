@@ -40,6 +40,7 @@ export interface PublicSignal {
   redLevel: number | null
   dangerDirection: 'Falls below' | 'Rises above' | null
   source: string | null
+  tier: 'Key' | 'Standard' | 'Context'  // editorial weight; drives dot and card size
   readings: PublicReading[]
 }
 
@@ -92,6 +93,7 @@ async function load(key: string): Promise<AiComplexPayload> {
     const label = text(p['Public Label'])
     if (!p.Public?.checkbox || !label) continue // belt and braces: never fall back to working titles
     const danger = select(p['Danger Direction'])
+    const tier = select(p.Tier)
     byPageId.set(page.id.replace(/-/g, ''), {
       id: slug(label),
       label,
@@ -105,6 +107,7 @@ async function load(key: string): Promise<AiComplexPayload> {
       redLevel: num(p['Red Level']),
       dangerDirection: danger === 'Falls below' || danger === 'Rises above' ? danger : null,
       source: text(p.Source) || null,
+      tier: tier === 'Key' || tier === 'Context' ? tier : 'Standard',
       readings: [],
     })
   }

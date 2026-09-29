@@ -203,9 +203,9 @@ export function laneLayout(signals, {
         const key = Math.round(cx / 14)
         const n = byX.get(key) ?? 0
         byX.set(key, n + 1)
-        offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 13
+        offset = n === 0 ? 0 : (n % 2 ? -1 : 1) * Math.ceil(n / 2) * 15
       }
-      dots.push({ signal: s, cx, cy: cy + offset, lane: i, placed: x !== null })
+      dots.push({ signal: s, cx, cy: cy + offset, lane: i, placed: x !== null, r: DOT_RADIUS[tierOf(s)] })
     }
     lane.y = cy
     lane.top = top
@@ -227,6 +227,103 @@ export function shapePath(shape, cx, cy, r) {
   }
   // circle / ring
   return `M${cx - r},${cy}a${r},${r} 0 1,0 ${2 * r},0a${r},${r} 0 1,0 ${-2 * r},0`
+}
+
+// ── Tier, gauge and move ───────────────────────────────────────
+// Tier is editorial weight from Notion: Key signals draw larger everywhere.
+export const TIER_ORDER = { Key: 0, Standard: 1, Context: 2 }
+export const tierOf = s => (s.tier in TIER_ORDER ? s.tier : 'Standard')
+export const DOT_RADIUS = { Key: 8, Standard: 6, Context: 4.5 }
+
+// Actual readings in the signal's chart unit, grouped by series, with the
+// latest and the one before it.
+function seriesRuns(signal) {
+  const by = new Map()
+  for (const r of actualReadings(signal)) {
+    if (r.unit === 'count' || (signal.unit && r.unit !== signal.unit)) continue
+    if (!by.has(r.series)) by.set(r.series, [])
+    by.get(r.series).push(r)
+  }
+  return [...by.values()].map(list => ({ list, last: list[list.length - 1], prev: list.length > 1 ? list[list.length - 2] : null }))
+}
+
+const cautionLine = s => s.amberLevel ?? s.redLevel ?? null
+
+// Relative room between a value and the signal's first caution line; negative once past it.
+export function roomToLine(signal, value) {
+  const line = cautionLine(signal)
+  if (line === null || !signal.dangerDirection || value === undefined) return null
+  return (signal.dangerDirection === 'Rises above' ? line - value : value - line) / Math.abs(line || 1)
+}
+
+// The series that speaks for the signal: with thresholds, the one closest to
+// its caution line (e.g. H100 rather than B200 debt coverage); otherwise the
+// only series, if there is exactly one.
+export function focusRun(signal) {
+  const runs = seriesRuns(signal)
+  if (!runs.length) return null
+  if (cautionLine(signal) === null || !signal.dangerDirection) return runs.length === 1 ? runs[0] : null
+  return runs.reduce((a, b) => (roomToLine(signal, b.last.value) < roomToLine(signal, a.last.value) ? b : a))
+}
+
+// 'better' | 'worse' | 'flat' | null. Judged against the side the signal
+// cares about, not raw up/down: a rising CDS spread is worse, a rising
+// pre-leasing rate is better. Moves under 0.5% count as flat.
+export function moveOf(signal, run = focusRun(signal)) {
+  if (!run?.prev || !signal.dangerDirection) return null
+  const d = run.last.value - run.prev.value
+  if (Math.abs(d) <= Math.abs(run.prev.value) * 0.005) return 'flat'
+  const worse = signal.dangerDirection === 'Rises above' ? d > 0 : d < 0
+  return worse ? 'worse' : 'better'
+}
+export const risingOf = (run = null) => (run?.prev ? run.last.value > run.prev.value : null)
+
+// Threshold gauge in percentages (0–100) so it renders at any width: zones
+// from the signal's own amber/red levels, the latest value and the prior one.
+export function gaugeModel(signal) {
+  const run = focusRun(signal)
+  const a = signal.amberLevel ?? null
+  const r = signal.redLevel ?? null
+  if (!run || (a === null && r === null) || !signal.dangerDirection) return null
+  const vals = [run.last.value, ...(run.prev ? [run.prev.value] : []), ...[a, r].filter(v => v !== null)]
+  let lo = Math.min(...vals)
+  let hi = Math.max(...vals)
+  const pad = (hi - lo || Math.abs(hi) || 1) * 0.2
+  lo = Math.min(...vals) >= 0 ? Math.max(0, lo - pad) : lo - pad
+  hi += pad
+  const pct = v => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100))
+  const up = signal.dangerDirection === 'Rises above'
+  const zones = up
+    ? [{ tone: 'green', from: lo, to: a ?? r }, a !== null && { tone: 'amber', from: a, to: r ?? hi }, r !== null && { tone: 'red', from: r, to: hi }]
+    : [r !== null && { tone: 'red', from: lo, to: r }, a !== null && { tone: 'amber', from: r ?? lo, to: a }, { tone: 'green', from: a ?? r, to: hi }]
+  return {
+    series: run.last.series,
+    zones: zones.filter(Boolean).map(z => ({ tone: z.tone, left: pct(z.from), width: pct(z.to) - pct(z.from) })),
+    now: pct(run.last.value),
+    prev: run.prev ? pct(run.prev.value) : null,
+    move: moveOf(signal, run),
+    last: run.last,
+    prior: run.prev,
+  }
+}
+
+// Latest actual reading of each charted series, largest first — for cards
+// where no single reading can stand for a multi-series signal.
+export function latestBySeries(signal) {
+  const by = new Map()
+  for (const r of actualReadings(signal)) if (r.unit !== 'count') by.set(`${r.unit}|${r.series}`, r)
+  return [...by.values()].sort((a, b) => b.value - a.value)
+}
+
+// Sparkline for the focus series, in a 100 × 24 box.
+export function sparkModel(signal) {
+  const run = focusRun(signal) ?? seriesRuns(signal)[0]
+  if (!run || run.list.length < 2) return null
+  const vs = run.list.map(r => r.value)
+  const min = Math.min(...vs)
+  const span = Math.max(...vs) - min || 1
+  const pts = vs.map((v, i) => [(i / (vs.length - 1)) * 100, 22 - ((v - min) / span) * 20])
+  return { d: pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(''), end: pts[pts.length - 1] }
 }
 
 // ── Readings charts ────────────────────────────────────────────
