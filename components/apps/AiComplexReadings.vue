@@ -22,7 +22,8 @@ const barMax = computed(() => Math.max(...points.value.map(p => Math.abs(p.value
 const model = computed(() => readingChartModel(props.group, { width: props.width }))
 const hover = ref(null) // { p, series }
 
-const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
+// 'index' is a unitless scale (the series name says what it counts), so no caption.
+const unitLabel = computed(() => (props.group.unit === 'index' ? '' : unitSuffix(props.group.unit) || 'value'))
 </script>
 
 <template>
@@ -42,8 +43,8 @@ const unitLabel = computed(() => unitSuffix(props.group.unit) || 'value')
       <span class="text-[11px] text-zinc-500">{{ formatDate(points[0].date) }}</span>
     </figcaption>
     <ul class="space-y-2">
-      <li v-for="p in [...points].sort((a, b) => b.value - a.value)" :key="p.series" class="grid grid-cols-[minmax(0,7rem)_1fr] items-center gap-3">
-        <span class="text-[12px] text-zinc-400 truncate">{{ p.series }}</span>
+      <li v-for="p in [...points].sort((a, b) => b.value - a.value)" :key="p.series" class="grid grid-cols-[minmax(0,10rem)_1fr] items-center gap-3">
+        <span class="text-[12px] text-zinc-400 leading-snug">{{ p.series }}</span>
         <span class="flex items-center gap-2 min-w-0">
           <span class="ac-grow h-2.5 rounded-r bg-[#3987e5]" :style="{ width: `${Math.max(2, (Math.abs(p.value) / barMax) * 78)}%` }" />
           <span class="text-[12px] font-medium text-zinc-200 tabular-nums whitespace-nowrap">{{ formatValue(p.value, group.unit) }}</span>
