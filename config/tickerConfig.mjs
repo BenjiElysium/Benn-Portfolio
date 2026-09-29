@@ -39,10 +39,11 @@ export const NVDA_CONFIG = {
   forwardMeta: { asOf: '2026-09-29', source: 'Yahoo Finance analyst consensus', verified: true },
   multipleBand: { min: 39.5, max: 58.9 },
   projectionGrowth: 33.6,
-  // Beta is the Blume-adjusted raw beta (0.67 × 2.00 + 0.33 = 1.67), the
-  // standard correction for raw betas drifting toward 1 over time. The raw
-  // 2.00 gave d = 15.56%, well above typical cost-of-equity estimates for NVDA.
-  capm: { rf: 0.0456, erp: 0.055, beta: 1.67 },  // d = 13.75%
+  // Beta: Blume-adjusted (0.67 × raw + 0.33, the standard correction for raw
+  // betas drifting toward 1) from Yahoo Finance's 5Y monthly raw beta of 2.22
+  // (2026-09-29). Same source and method for NVDA, BX and GOOGL. The previous
+  // unadjusted 2.00 gave d = 15.56%.
+  capm: { rf: 0.0456, erp: 0.055, beta: 1.82 },  // d = 14.57%
   seedValues: [9.31, 15.68],  // FY2027, FY2028 consensus
   growthStages: [
     { years: 3, rate: 0.30 },   // years 3-5
@@ -163,22 +164,25 @@ export const BX_CONFIG = {
   ttmDePerShare: 6.15,
   ttmDeLabel: 'LTM Q2 2026',
   ttmDePerShareMeta: { asOf: '2026-06-30', source: 'Q2 2026 earnings release (LTM as stated)', verified: true },
-  forward: { y1: 6.03, y2: 7.56 },  // corrected DE estimates for P/DE targets
-  // DE consensus from the source analysis; exact capture date not independently traceable.
-  forwardMeta: { asOf: '2026-06-30', source: 'DE consensus snapshot (source analysis)', verified: false },
-  forwardDE: { y1: 6.03, y2: 7.56 },  // explicit DE for multiple calcs (DE ≠ DpS)
+  // DE consensus for CY2026 / CY2027 after the Q2 2026 print (was 6.03 / 7.56).
+  forward: { y1: 6.02, y2: 7.48 },
+  forwardMeta: { asOf: '2026-09-29', source: 'stockanalysis.com analyst consensus', verified: true },
+  forwardDE: { y1: 6.02, y2: 7.48 },  // explicit DE for multiple calcs (DE ≠ DpS)
   multipleBand: { min: 22, max: 29 },  // applied to DE, not DpS
   projectionGrowth: 10,
-  capm: { rf: 0.0456, erp: 0.055, beta: 1.13 },  // d = 10.78%
+  // Blume-adjusted from Yahoo Finance's 5Y monthly raw beta of 1.56
+  // (2026-09-29) — see NVDA. The previous 1.13 gave d = 10.78%.
+  capm: { rf: 0.0456, erp: 0.055, beta: 1.38 },  // d = 12.15%
   seedValues: [5.23, 6.29],  // CY2026, CY2027 consensus DpS
   growthStages: [
     { years: 8, rate: 0.10 },   // years 3-10 at flat 10%
   ],
-  terminal: { growth: 0.12, years: 20 },
+  // 20 fade years, then a perpetuity — see NVDA.
+  terminal: { growth: 0.12, years: 20, perpetualGrowth: 0.035 },
   payoutRatio: 85,
   revenueModel: null,  // BX doesn't have a quarterly revenue model in the UI
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
-  priceFallback: 141.99,
+  priceFallback: 113.70,
   historicalMultiple: [
     { label: 'Current', value: 27.36 },
     { label: 'Q4 2025', value: 27.36 },
@@ -269,22 +273,31 @@ export const GOOGL_CONFIG = {
   //   as of the Q2 2026 release (2026-07-22). Nothing UNVERIFIED.
   ttmEps: 11.30,
   ttmEpsMeta: { asOf: '2026-06-30', source: 'Q2 2026 earnings release (ex equity gains)', verified: true },
-  forward: { y1: 14.24, y2: 14.49 },
-  // Yahoo consensus seed; exact capture date not independently traceable.
-  forwardMeta: { asOf: '2026-06-30', source: 'Yahoo consensus snapshot', verified: false },
+  // Consensus diluted EPS, ex equity gains, to match ttmEps. Yahoo's CY2026
+  // average ($20.64, 53 analysts) includes the Q1 and Q2 unrealized gains
+  // Alphabet reported ($2.35 + $6.26 a share), so y1 = 20.64 − 8.61 = 12.03.
+  // CY2027 ($14.94, 53 analysts) assumes no gains. The old 14.24 carried the
+  // Q1 gain.
+  forward: { y1: 12.03, y2: 14.94 },
+  forwardMeta: { asOf: '2026-09-29', source: 'Yahoo Finance analyst consensus (ex equity gains)', verified: true },
   multipleBand: { min: 18.0, max: 26.0 },
   projectionGrowth: 15,
-  capm: null,  // TODO: no source analysis exists; derive beta before switching to CAPM
-  discountRateOverride: 0.10,  // 10% — no CAPM source yet
+  // Blume-adjusted from Yahoo Finance's 5Y monthly raw beta of 1.23
+  // (2026-09-29) — see NVDA. Replaces the fixed 10% override (kept as fallback).
+  capm: { rf: 0.0456, erp: 0.055, beta: 1.15 },  // d = 10.88%
+  discountRateOverride: 0.10,
   seedValues: null,  // no consensus seeds; start from baseValue
   growthStages: [
     { years: 5, rate: 0.20 },   // years 1-5
     { years: 5, rate: 0.12 },   // years 6-10
   ],
-  terminal: { growth: 0.12, years: 10 },
-  revenueModel: { q1: 90, q2: 97, q3: 103, q4: 110 },
+  // 10 fade years, then a perpetuity — see NVDA.
+  terminal: { growth: 0.12, years: 10, perpetualGrowth: 0.035 },
+  // Q1 ($109.9B) and Q2 ($119.8B) actual; Q3 is consensus ($127.3B) and Q4 is
+  // the CY2026 consensus ($498.6B) less the other three.
+  revenueModel: { q1: 109.9, q2: 119.8, q3: 127.3, q4: 141.6 },
   // Seeds internal chart/positioning math only — see NVDA note. Never displayed.
-  priceFallback: 344.72,
+  priceFallback: 335.95,
   // Canonical completed-quarter TTM P/E series (chronological, dated) — see NVDA note.
   historicalMultiple: [
     { label: 'Oct 2023', date: '2023-10-31', value: 27.05 },

@@ -27,7 +27,7 @@ Philip Benn's personal portfolio site: Nuxt 3 + Vue 3 + Tailwind, deployed on Ve
 
 The finance apps follow a deliberate split:
 
-- `composables/*.js` contain **pure functions only — no Vue reactivity**. `usePortfolioSim.js` (Monte Carlo sim, seeded mulberry32 PRNG, named market scenarios), `useStockValuation.js` (P/E–P/DE valuation stats, DCF; config-object driven so adding a stock means a new config, not new math), `useProjectionChart.js` (Chart.js projection builder that updates charts in place to avoid flicker on live price ticks), `useAiComplex.js` (lead-time lane layout, readings chart scales, status/staleness logic for the AI Complex board).
+- `composables/*.js` contain **pure functions only — no Vue reactivity**. `usePortfolioSim.js` (Monte Carlo sim, seeded mulberry32 PRNG, named market scenarios), `useStockValuation.js` (P/E–P/DE valuation stats, staged DCF with an Rx fade and optional perpetuity; config-object driven so adding a stock means a new config, not new math — per-ticker inputs, sources and CAPM betas live in `config/tickerConfig.mjs`), `useProjectionChart.js` (Chart.js projection builder that updates charts in place to avoid flicker on live price ticks), `useAiComplex.js` (lead-time lane layout, readings chart scales, status/staleness logic for the AI Complex board).
 - `components/apps/*.vue` own the reactive state and call the composable functions from `computed()`. `StockAnalyzer.vue` (~3500 lines), `CompoundCalculator.vue` and `AiComplex.vue` are the main apps; each has a thin wrapper page in `pages/apps/`. AI Complex charts are hand-rolled SVG laid out in real pixels (ResizeObserver), not Chart.js.
 
 Keep new simulation/valuation math in the composables, not in components, and keep it pure.
