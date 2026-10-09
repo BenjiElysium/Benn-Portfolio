@@ -87,7 +87,7 @@ useSeoMeta({
           </ul>
         </div>
 
-        <!-- California College of Art -->
+        <!-- California College of the Arts -->
         <div
           v-motion
           :initial="{ opacity: 0, x: -16 }"
@@ -97,7 +97,7 @@ useSeoMeta({
           <div class="flex flex-wrap items-center gap-3 mb-1">
             <a href="https://portal.cca.edu/people/pbenn" target="_blank" rel="noopener noreferrer"
               class="text-base font-semibold text-zinc-100 hover:text-indigo-300 transition-colors">
-              California College of Art
+              California College of the Arts
             </a>
             <span class="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full font-medium">Current</span>
           </div>
