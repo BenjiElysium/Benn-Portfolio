@@ -123,7 +123,7 @@ const clients = [
   { name: 'Nvidia', note: '' },
   { name: 'Apple', note: '*' },
   { name: 'Google', note: '*' },
-  { name: 'California College of Art', note: '' },
+  { name: 'California College of the Arts', note: '' },
 ];
 
 // ── Parallax scroll ─────────────────────────────────────────────
@@ -213,7 +213,7 @@ const cardVisible = (delay = 0) => ({
             :initial="{ opacity: 0 }"
             :enter="{ opacity: 1, transition: { delay: 500, duration: 700 } }"
             class="motion-initial text-lg text-zinc-300 leading-relaxed mb-8 max-w-xl">
-            Creative Technologist with over a decade of experience in 3D production for product rendering and animation, now building at the intersection of generative AI tools and visual content pipelines. Teaches in the MFA Design program at California College of Art.
+            Creative Technologist with over a decade of experience in 3D production for product rendering and animation, now building at the intersection of generative AI tools and visual content pipelines. Teaches in the MFA Design program at California College of the Arts.
           </p>
 
           <!-- CTAs -->
